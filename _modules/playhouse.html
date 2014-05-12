@@ -1,0 +1,1058 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>playhouse &mdash; Playhouse 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Playhouse 0.1 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">Playhouse 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for playhouse</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;A `Tornado &lt;http://www.tornadoweb.org/&gt;`_-based Python library for communicating</span>
+<span class="sd">with Philips Hue bridges.</span>
+
+<span class="sd">This library exposes the Philips Hue API, normally a JSON API, as an object oriented Python API.</span>
+<span class="sd">These methods require that the `IOLoop &lt;tornado.ioloop.IOLoop&gt;` returned by `tornado.ioloop.IOLoop.current`</span>
+<span class="sd">is running in order to function.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">errno</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">from</span> <span class="nn">xml.etree</span> <span class="kn">import</span> <span class="n">ElementTree</span>
+
+<span class="kn">import</span> <span class="nn">tornado.concurrent</span>
+<span class="kn">import</span> <span class="nn">tornado.escape</span>
+<span class="kn">import</span> <span class="nn">tornado.gen</span>
+<span class="kn">import</span> <span class="nn">tornado.httpclient</span>
+<span class="kn">import</span> <span class="nn">tornado.iostream</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">tornado.curl_httpclient</span>
+    <span class="n">tornado</span><span class="o">.</span><span class="n">httpclient</span><span class="o">.</span><span class="n">AsyncHTTPClient</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">tornado</span><span class="o">.</span><span class="n">curl_httpclient</span><span class="o">.</span><span class="n">CurlAsyncHTTPClient</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&quot;Couldn&#39;t import CurlAsyncHTTPClient, reverting to slow default implementation&quot;</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">TaskTimedOutException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">NoBridgeFoundException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">BridgeAlreadyAddedException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">OutsideGridException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">NoBridgeAtCoordinateException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">BulbNotResetException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">HueAPIException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">error</span><span class="p">,</span> <span class="n">bridge</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="s">&quot;{}: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">error</span><span class="p">[</span><span class="s">&quot;error&quot;</span><span class="p">][</span><span class="s">&quot;address&quot;</span><span class="p">],</span> <span class="n">error</span><span class="p">[</span><span class="s">&quot;error&quot;</span><span class="p">][</span><span class="s">&quot;description&quot;</span><span class="p">]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">address</span> <span class="o">=</span> <span class="n">error</span><span class="p">[</span><span class="s">&quot;error&quot;</span><span class="p">][</span><span class="s">&quot;address&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">error</span><span class="p">[</span><span class="s">&quot;error&quot;</span><span class="p">][</span><span class="s">&quot;description&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="n">error</span><span class="p">[</span><span class="s">&quot;error&quot;</span><span class="p">][</span><span class="s">&quot;type&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bridge</span> <span class="o">=</span> <span class="n">bridge</span>
+
+<span class="k">class</span> <span class="nc">UnauthorizedUserException</span><span class="p">(</span><span class="n">HueAPIException</span><span class="p">):</span>
+    <span class="k">pass</span>
+<span class="k">class</span> <span class="nc">BodyContainsInvalidJSONException</span><span class="p">(</span><span class="n">HueAPIException</span><span class="p">):</span>
+    <span class="k">pass</span>
+<span class="k">class</span> <span class="nc">ResourceNotAvailableException</span><span class="p">(</span><span class="n">HueAPIException</span><span class="p">):</span>
+    <span class="k">pass</span>
+<span class="k">class</span> <span class="nc">MethodNotAvailableException</span><span class="p">(</span><span class="n">HueAPIException</span><span class="p">):</span>
+    <span class="k">pass</span>
+<span class="k">class</span> <span class="nc">MissingParameterException</span><span class="p">(</span><span class="n">HueAPIException</span><span class="p">):</span>
+    <span class="k">pass</span>
+<span class="k">class</span> <span class="nc">ParameterNotAvailableException</span><span class="p">(</span><span class="n">HueAPIException</span><span class="p">):</span>
+    <span class="k">pass</span>
+<span class="k">class</span> <span class="nc">InvalidValueException</span><span class="p">(</span><span class="n">HueAPIException</span><span class="p">):</span>
+    <span class="k">pass</span>
+<span class="k">class</span> <span class="nc">ReadOnlyParameterException</span><span class="p">(</span><span class="n">HueAPIException</span><span class="p">):</span>
+    <span class="k">pass</span>
+<span class="k">class</span> <span class="nc">NoLinkButtonPressedException</span><span class="p">(</span><span class="n">HueAPIException</span><span class="p">):</span>
+    <span class="k">pass</span>
+<span class="k">class</span> <span class="nc">DeviceIsOffException</span><span class="p">(</span><span class="n">HueAPIException</span><span class="p">):</span>
+    <span class="k">pass</span>
+<span class="k">class</span> <span class="nc">CouldNotCreateGroupException</span><span class="p">(</span><span class="n">HueAPIException</span><span class="p">):</span>
+    <span class="k">pass</span>
+<span class="k">class</span> <span class="nc">CouldNotAddToGroupException</span><span class="p">(</span><span class="n">HueAPIException</span><span class="p">):</span>
+    <span class="k">pass</span>
+<span class="k">class</span> <span class="nc">InternalErrorException</span><span class="p">(</span><span class="n">HueAPIException</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="n">HUE_ERRORS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="mi">1</span><span class="p">:</span> <span class="n">UnauthorizedUserException</span><span class="p">,</span>
+    <span class="mi">2</span><span class="p">:</span> <span class="n">BodyContainsInvalidJSONException</span><span class="p">,</span>
+    <span class="mi">3</span><span class="p">:</span> <span class="n">ResourceNotAvailableException</span><span class="p">,</span>
+    <span class="mi">4</span><span class="p">:</span> <span class="n">MethodNotAvailableException</span><span class="p">,</span>
+    <span class="mi">5</span><span class="p">:</span> <span class="n">MissingParameterException</span><span class="p">,</span>
+    <span class="mi">6</span><span class="p">:</span> <span class="n">ParameterNotAvailableException</span><span class="p">,</span>
+    <span class="mi">7</span><span class="p">:</span> <span class="n">InvalidValueException</span><span class="p">,</span>
+    <span class="mi">8</span><span class="p">:</span> <span class="n">ReadOnlyParameterException</span><span class="p">,</span>
+    <span class="mi">101</span><span class="p">:</span> <span class="n">NoLinkButtonPressedException</span><span class="p">,</span>
+    <span class="mi">201</span><span class="p">:</span> <span class="n">DeviceIsOffException</span><span class="p">,</span>
+    <span class="mi">301</span><span class="p">:</span> <span class="n">CouldNotCreateGroupException</span><span class="p">,</span>
+    <span class="mi">302</span><span class="p">:</span> <span class="n">CouldNotAddToGroupException</span><span class="p">,</span>
+    <span class="mi">901</span><span class="p">:</span> <span class="n">InternalErrorException</span>
+<span class="p">}</span>
+
+<span class="k">class</span> <span class="nc">UnknownBridgeException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mac</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mac</span> <span class="o">=</span> <span class="n">mac</span>
+
+
+
+<span class="k">class</span> <span class="nc">ExceptionCatcher</span><span class="p">(</span><span class="n">tornado</span><span class="o">.</span><span class="n">gen</span><span class="o">.</span><span class="n">YieldPoint</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Runs multiple asynchronous operations in parallel until each operation</span>
+<span class="sd">    has either completed or raised an exception.</span>
+
+<span class="sd">    Takes a dictionary of ``Tasks`` or other ``YieldPoints`` and returns a</span>
+<span class="sd">    (results, exceptions) tuple, where results and exceptions are dictionaries</span>
+<span class="sd">    with the same keys as the given dictionary, and the operation result or</span>
+<span class="sd">    the exception object that the operation raised respectively as values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">children</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">children</span> <span class="o">=</span> <span class="n">children</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">tornado</span><span class="o">.</span><span class="n">concurrent</span><span class="o">.</span><span class="n">Future</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">tornado</span><span class="o">.</span><span class="n">gen</span><span class="o">.</span><span class="n">YieldFuture</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">tornado</span><span class="o">.</span><span class="n">gen</span><span class="o">.</span><span class="n">YieldPoint</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unfinished_children</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">exceptions</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runner</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">v</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">runner</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">exceptions</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">e</span>
+
+    <span class="k">def</span> <span class="nf">is_ready</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">finished</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">takewhile</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">k</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">is_ready</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">unfinished_children</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unfinished_children</span><span class="o">.</span><span class="n">difference_update</span><span class="p">(</span><span class="n">finished</span><span class="p">)</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">unfinished_children</span>
+
+    <span class="k">def</span> <span class="nf">get_result</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">results</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">get_result</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span> <span class="c"># pylint: disable=broad-except</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">exceptions</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">e</span>
+        <span class="k">return</span> <span class="n">results</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">exceptions</span>
+
+
+<span class="k">class</span> <span class="nc">TimeoutTask</span><span class="p">(</span><span class="n">tornado</span><span class="o">.</span><span class="n">gen</span><span class="o">.</span><span class="n">YieldPoint</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="s">&quot;callback&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">args</span> <span class="o">=</span> <span class="n">args</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func</span> <span class="o">=</span> <span class="n">func</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">has_timed_out</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timeout_handler</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ioloop</span> <span class="o">=</span> <span class="n">tornado</span><span class="o">.</span><span class="n">ioloop</span><span class="o">.</span><span class="n">IOLoop</span><span class="o">.</span><span class="n">current</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runner</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">runner</span> <span class="o">=</span> <span class="n">runner</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>
+        <span class="n">runner</span><span class="o">.</span><span class="n">register_callback</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">[</span><span class="s">&quot;callback&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">result_callback</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timeout_handler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ioloop</span><span class="o">.</span><span class="n">add_timeout</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">),</span>
+                                                       <span class="bp">self</span><span class="o">.</span><span class="n">timed_out</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">timed_out</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timeout_handler</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">has_timed_out</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">[</span><span class="s">&quot;callback&quot;</span><span class="p">]()</span>
+
+    <span class="k">def</span> <span class="nf">is_ready</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">ir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">runner</span><span class="o">.</span><span class="n">is_ready</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ir</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_timed_out</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ioloop</span><span class="o">.</span><span class="n">remove_timeout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">timeout_handler</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">timeout_handler</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">runner</span><span class="o">.</span><span class="n">is_ready</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_result</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">runner</span><span class="o">.</span><span class="n">pop_result</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_timed_out</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">res</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">TaskTimedOutException</span>
+
+
+<div class="viewcode-block" id="Bridge"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge">[docs]</a><span class="k">class</span> <span class="nc">Bridge</span><span class="p">:</span>
+
+    <span class="c"># pylint: disable=too-many-instance-attributes</span>
+    <span class="sd">&quot;&quot;&quot;Instances of the Bridge handle a connection to a specific Hue bridge.</span>
+
+<span class="sd">    Hue bridges communicate through a RESTful JSON API through TCP port 80.</span>
+<span class="sd">    This class wraps this RESTful interface and provides a Python API for</span>
+<span class="sd">    convenient Hue bridge operation. The functions for setting the current</span>
+<span class="sd">    state of a particular lamp uses the Hue light state names, see</span>
+<span class="sd">    http://developers.meethue.com/1_lightsapi.html#16_set_light_state for reference.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ignoredkeys</span> <span class="o">=</span> <span class="p">{</span><span class="s">&quot;transitiontime&quot;</span><span class="p">,</span> <span class="s">&quot;alert&quot;</span><span class="p">,</span> <span class="s">&quot;effect&quot;</span><span class="p">,</span> <span class="s">&quot;colormode&quot;</span><span class="p">,</span> <span class="s">&quot;reachable&quot;</span><span class="p">}</span>
+
+    <span class="nd">@tornado.gen.coroutine</span>
+<div class="viewcode-block" id="Bridge.__new__"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.__new__">[docs]</a>    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">ipaddress</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">defaults</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create a new Bridge object.</span>
+
+<span class="sd">        :param str ipaddress: The IP address for this bridge</span>
+<span class="sd">        :param str username: The username for this bridge as described in the Hue documentation.</span>
+<span class="sd">                             Required for most commands.</span>
+<span class="sd">        :param dict defaults: A dictionary containing default state changes to be sent with any</span>
+<span class="sd">                              state-changing commands.</span>
+<span class="sd">        :param int timeout: The time in seconds to wait for any requests to the Hue bridge</span>
+<span class="sd">                            to complete.</span>
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to a bridge object when completed.</span>
+<span class="sd">        :raises NoBridgeFoundException: If no bridge was found at the given IP address.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">Bridge</span><span class="p">,</span> <span class="n">cls</span><span class="p">)</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">defaults</span> <span class="o">=</span> <span class="n">defaults</span> <span class="k">if</span> <span class="n">defaults</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="p">{</span><span class="s">&quot;transitiontime&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">username</span> <span class="o">=</span> <span class="n">username</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ipaddress</span> <span class="o">=</span> <span class="n">ipaddress</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">tornado</span><span class="o">.</span><span class="n">httpclient</span><span class="o">.</span><span class="n">AsyncHTTPClient</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">light_data</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">groups</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mac</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gateway</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">netmask</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">logged_in</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="p">(</span><span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;GET&quot;</span><span class="p">,</span> <span class="s">&quot;/config&quot;</span><span class="p">,</span>
+                                            <span class="n">force_send</span><span class="o">=</span><span class="bp">True</span><span class="p">))[</span><span class="s">&#39;name&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&quot;Philips hue&quot;</span>
+
+            <span class="c"># assume Philips Hue bridge from here on</span>
+
+            <span class="n">res</span> <span class="o">=</span> <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">http_request</span><span class="p">(</span><span class="s">&quot;GET&quot;</span><span class="p">,</span> <span class="s">&quot;/description.xml&quot;</span><span class="p">)</span>
+
+            <span class="n">et</span><span class="p">,</span> <span class="n">ns</span> <span class="o">=</span> <span class="n">parse_description</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">buffer</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">serial_number</span> <span class="o">=</span> <span class="n">et</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;./default:device/default:serialNumber&#39;</span><span class="p">,</span>
+                                           <span class="n">namespaces</span><span class="o">=</span><span class="n">ns</span><span class="p">)</span><span class="o">.</span><span class="n">text</span>
+
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">UnicodeDecodeError</span><span class="p">,</span> <span class="ne">AssertionError</span><span class="p">,</span> <span class="n">tornado</span><span class="o">.</span><span class="n">httpclient</span><span class="o">.</span><span class="n">HTTPError</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">NoBridgeFoundException</span><span class="p">(</span><span class="s">&quot;{}: not a Philips Hue bridge&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ipaddress</span><span class="p">))</span>
+
+        <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_info</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="bp">self</span>
+</div>
+<div class="viewcode-block" id="Bridge.set_defaults"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.set_defaults">[docs]</a>    <span class="k">def</span> <span class="nf">set_defaults</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">defaults</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the default state changes to be included with any calls to state-changing operations.</span>
+
+<span class="sd">        These changes are included whenever the state is set, unless overridden</span>
+<span class="sd">        by the provided state change argument.</span>
+
+<span class="sd">        :param dict defaults: The new default state changes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defaults</span> <span class="o">=</span> <span class="n">defaults</span>
+</div>
+    <span class="nd">@tornado.gen.coroutine</span>
+<div class="viewcode-block" id="Bridge.http_request"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.http_request">[docs]</a>    <span class="k">def</span> <span class="nf">http_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Send an HTTP request to the bridge.</span>
+
+<span class="sd">        :param str method: HTTP request method (POST/GET/PUT/DELETE)</span>
+<span class="sd">        :param str url: The URL to send this request to.</span>
+<span class="sd">        :param str body: HTTP POST request body.</span>
+<span class="sd">        :param int timeout: The time to wait for this request to complete. Defaults to</span>
+<span class="sd">                            the timeout supplied to the `Bridge` constructor.</span>
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge</span>
+<span class="sd">                 when complete.</span>
+<span class="sd">        :rtype: str</span>
+<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Sending request </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s"> (data: </span><span class="si">%s</span><span class="s">) to </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span>
+                      <span class="n">method</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">body</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">timeout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s">&quot;http://{}{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">,</span> <span class="n">url</span><span class="p">),</span>
+                                           <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="n">body</span><span class="p">,</span> <span class="n">request_timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Response from bridge: </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">response</span>
+</div>
+    <span class="nd">@tornado.gen.coroutine</span>
+<div class="viewcode-block" id="Bridge.send_raw"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.send_raw">[docs]</a>    <span class="k">def</span> <span class="nf">send_raw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Send an HTTP request to the bridge.</span>
+
+<span class="sd">        :param str method: HTTP request method (POST/GET/PUT/DELETE).</span>
+<span class="sd">        :param str url: The URL to send this request to.</span>
+<span class="sd">        :param dict body: HTTP POST request body as a Python dictionary. The dictionary</span>
+<span class="sd">                          will be converted to a JSON string.</span>
+<span class="sd">        :param int timeout: The time to wait for this request to complete. Defaults to</span>
+<span class="sd">                            the timeout supplied to the `Bridge` constructor.</span>
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
+<span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
+<span class="sd">        :rtype: dict</span>
+<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
+<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">body</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">body</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">method</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&quot;POST&quot;</span><span class="p">,</span> <span class="s">&quot;PUT&quot;</span><span class="p">):</span> <span class="c"># the curl http client doesn&#39;t accept body=None for POST/PUT</span>
+            <span class="n">body</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">http_request</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">body</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">res</span> <span class="o">=</span> <span class="n">tornado</span><span class="o">.</span><span class="n">escape</span><span class="o">.</span><span class="n">json_decode</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">body</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">res</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">list</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">res</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s">&quot;error&quot;</span> <span class="ow">in</span> <span class="n">item</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">HUE_ERRORS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s">&quot;error&quot;</span><span class="p">][</span><span class="s">&quot;type&quot;</span><span class="p">],</span> <span class="n">HueAPIException</span><span class="p">)(</span><span class="n">item</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">res</span>
+</div>
+<div class="viewcode-block" id="Bridge.send_request"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.send_request">[docs]</a>    <span class="k">def</span> <span class="nf">send_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">force_send</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Send a HTTP request to the bridge.</span>
+
+<span class="sd">        :param str method: HTTP request method (POST/GET/PUT/DELETE).</span>
+<span class="sd">        :param str url: The URL to send this request to. Unlike the other HTTP request</span>
+<span class="sd">                        methods, this argument should only include the part of the URL</span>
+<span class="sd">                        which is after the username.</span>
+<span class="sd">        :param dict body: HTTP POST request body as a Python dictionary. The dictionary</span>
+<span class="sd">                          will be converted to a JSON string.</span>
+<span class="sd">        :param int timeout: The time to wait for this request to complete. Defaults to</span>
+<span class="sd">                            the timeout supplied to the `Bridge` constructor.</span>
+<span class="sd">        :param bool force_send: By default no request will be attempted and an</span>
+<span class="sd">                                `UnauthorizedUserException` if no username is set; setting</span>
+<span class="sd">                                this parameter to ``True`` will force a request using</span>
+<span class="sd">                                a dummy username (&#39;none&#39;).</span>
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
+<span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
+<span class="sd">        :rtype: dict</span>
+<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
+<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">username</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span>
+        <span class="k">if</span> <span class="n">username</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force_send</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">UnauthorizedUserException</span><span class="p">({</span><span class="s">&quot;error&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s">&quot;type&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&quot;address&quot;</span><span class="p">:</span> <span class="n">url</span><span class="p">,</span>
+                                                       <span class="s">&quot;description&quot;</span><span class="p">:</span> <span class="s">&quot;unauthorized user&quot;</span><span class="p">}},</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">username</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">username</span> <span class="o">=</span> <span class="s">&quot;none&quot;</span> <span class="c"># dummy username guaranteed to be invalid (too short)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="s">&quot;/api/{}{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">url</span><span class="p">),</span> <span class="n">body</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_set_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;PUT&quot;</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_state_preprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+        <span class="n">defs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">defaults</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">defs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s">&#39;rgb&#39;</span> <span class="ow">in</span> <span class="n">defs</span><span class="p">:</span>
+            <span class="n">defs</span><span class="p">[</span><span class="s">&#39;xy&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rgb2xy</span><span class="p">(</span><span class="o">*</span><span class="n">defs</span><span class="p">[</span><span class="s">&#39;rgb&#39;</span><span class="p">])</span>
+            <span class="k">del</span> <span class="n">defs</span><span class="p">[</span><span class="s">&#39;rgb&#39;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">defs</span>
+
+<div class="viewcode-block" id="Bridge.set_state"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.set_state">[docs]</a>    <span class="k">def</span> <span class="nf">set_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="o">**</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set state of a particular lamp.</span>
+
+<span class="sd">        :param int i: ID number for the light whose state to change.</span>
+<span class="sd">        :param args: Hue state changes. A full list of allowed state change can be found at</span>
+<span class="sd">                     http://developers.meethue.com/1_lightsapi.html#16_set_light_state.</span>
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
+<span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
+<span class="sd">        :rtype: dict</span>
+<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
+<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_preprocess</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+        <span class="c"># Remove unnecessary commands</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">light_data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">final_send</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ignoredkeys</span> <span class="ow">or</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">state</span> <span class="ow">or</span> <span class="n">state</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">!=</span> <span class="n">v</span><span class="p">:</span>
+                <span class="n">final_send</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+                <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ignoredkeys</span><span class="p">:</span>
+                    <span class="n">state</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+            <span class="k">elif</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">state</span> <span class="ow">and</span> <span class="n">state</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">==</span> <span class="n">v</span><span class="p">:</span>
+                <span class="k">pass</span> <span class="c"># Do not include this redundant command</span>
+        <span class="c">#print(&quot;Started with:&quot; + str(args))</span>
+        <span class="c">#print(&quot;Reduced to:&quot; + str(final_send))</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set_state</span><span class="p">(</span><span class="s">&#39;/lights/{}/state&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="n">final_send</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Bridge.set_group"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.set_group">[docs]</a>    <span class="k">def</span> <span class="nf">set_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="o">**</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the state of a given lamp group.</span>
+
+<span class="sd">        :param int i: ID for the group whose state to change.</span>
+<span class="sd">        :param args: Hue state changes. A full list of allowed state changes can be found at</span>
+<span class="sd">                     http://developers.meethue.com/1_lightsapi.html#16_set_light_state.</span>
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
+<span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
+<span class="sd">        :rtype: dict</span>
+<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
+<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_preprocess</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">light_data</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ignoredkeys</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">lamp</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">light_data</span><span class="p">[</span><span class="n">lamp</span><span class="p">][</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set_state</span><span class="p">(</span><span class="s">&#39;/groups/{}/action&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="n">args</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Bridge.get_lights"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.get_lights">[docs]</a>    <span class="k">def</span> <span class="nf">get_lights</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Fetch a list of all lights known to the bridge.</span>
+
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
+<span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
+<span class="sd">        :rtype: dict</span>
+<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
+<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;GET&quot;</span><span class="p">,</span> <span class="s">&quot;/lights&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Bridge.search_lights"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.search_lights">[docs]</a>    <span class="k">def</span> <span class="nf">search_lights</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Start a new light search.</span>
+
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
+<span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
+<span class="sd">        :rtype: dict</span>
+<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
+<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;POST&quot;</span><span class="p">,</span> <span class="s">&quot;/lights&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Bridge.get_new_lights"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.get_new_lights">[docs]</a>    <span class="k">def</span> <span class="nf">get_new_lights</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get a list of all lights found during the last light search.</span>
+
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
+<span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
+<span class="sd">        :rtype: dict</span>
+<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
+<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;GET&quot;</span><span class="p">,</span> <span class="s">&quot;/lights/new&quot;</span><span class="p">)</span>
+</div>
+    <span class="nd">@tornado.gen.coroutine</span>
+<div class="viewcode-block" id="Bridge.reset_nearby_bulb"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.reset_nearby_bulb">[docs]</a>    <span class="k">def</span> <span class="nf">reset_nearby_bulb</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Attempts to reset a Hue light bulb in proximity to the bridge.</span>
+
+<span class="sd">        For best effect, place the bulb in close proximity to the bridge, and make</span>
+<span class="sd">        sure that there are no other turned on Hue lights nearby.</span>
+
+<span class="sd">        :return: A `tornado.concurrent.Future` that completes when a bulb has been successfully</span>
+<span class="sd">                 reset, or when the reset attempt has failed.</span>
+<span class="sd">        :raises BulbNotResetException: If no bulb was reset.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sock</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">()</span>
+        <span class="n">stream</span> <span class="o">=</span> <span class="n">tornado</span><span class="o">.</span><span class="n">iostream</span><span class="o">.</span><span class="n">IOStream</span><span class="p">(</span><span class="n">sock</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Connecting to </span><span class="si">%s</span><span class="s"> at port 30000&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="n">TimeoutTask</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">connect</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">,</span> <span class="mi">30000</span><span class="p">))</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Sending [Link,Touchlink]&quot;</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="n">TimeoutTask</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">write</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;[Link,Touchlink]&#39;</span><span class="p">)</span>
+
+            <span class="n">echo</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">TimeoutTask</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">read_until</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Got </span><span class="si">%s</span><span class="s"> as an echo response&quot;</span><span class="p">,</span> <span class="n">echo</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">echo</span> <span class="o">!=</span> <span class="n">b</span><span class="s">&#39;[Link,Touchlink]</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Echo response was not [Link,Touchlink]: &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span><span class="p">,</span> <span class="n">echo</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                <span class="k">raise</span> <span class="n">BulbNotResetException</span>
+
+            <span class="n">response</span> <span class="o">=</span> <span class="p">(</span><span class="k">yield</span> <span class="n">TimeoutTask</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">read_until</span><span class="p">,</span> <span class="n">b</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">))</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Got reset response </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">response</span> <span class="o">==</span> <span class="s">&#39;[Link,Touchlink,failed]</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Bridge failed to reset a bulb&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="n">BulbNotResetException</span>
+
+            <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">r&quot;\[Link,Touchlink,success,NwkAddr=([^,]+),pan=([^]]+)\]\n&quot;</span><span class="p">,</span>
+                             <span class="n">response</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Reset bulb has NwkAddr </span><span class="si">%s</span><span class="s"> and pan </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">match</span><span class="o">.</span><span class="n">groups</span><span class="p">())</span>
+                <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Unexpected reset response </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="n">BulbNotResetException</span>
+        <span class="k">except</span> <span class="n">TaskTimedOutException</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Reset attempt timed out&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">BulbNotResetException</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Closing stream used for bulb reset&quot;</span><span class="p">)</span>
+            <span class="n">stream</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Bridge.get_bridge_info"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.get_bridge_info">[docs]</a>    <span class="k">def</span> <span class="nf">get_bridge_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;TODO</span>
+
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
+<span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
+<span class="sd">        :rtype: dict</span>
+<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
+<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;GET&quot;</span><span class="p">,</span> <span class="s">&quot;/&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Bridge.set_username"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.set_username">[docs]</a>    <span class="k">def</span> <span class="nf">set_username</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">username</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the user name for this bridge.</span>
+
+<span class="sd">        A valid user name is required to execute most commands.</span>
+
+<span class="sd">        `update_info` will be run after setting the username in order to validate the username.</span>
+
+<span class="sd">        :param str username: The new user name.</span>
+<span class="sd">        :return: A `tornado.concurrent.Future` that completes when `update_info` has finished</span>
+<span class="sd">                 updating the metadata.</span>
+<span class="sd">        :raises NoLinkButtonPressedException: If the link button was not pressed.</span>
+<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">username</span> <span class="o">=</span> <span class="n">username</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_info</span><span class="p">()</span>
+</div>
+    <span class="nd">@tornado.gen.coroutine</span>
+<div class="viewcode-block" id="Bridge.create_user"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.create_user">[docs]</a>    <span class="k">def</span> <span class="nf">create_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">devicetype</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create a new user for this bridge.</span>
+
+<span class="sd">        A valid user name is required to execute most commands. In order to create a new user,</span>
+<span class="sd">        the link button on the Hue bridge must pressed before this command is executed.</span>
+
+<span class="sd">        :param str devicetype: The &#39;type&#39; of user. Should be related to the application</span>
+<span class="sd">                               for which this user is created.</span>
+<span class="sd">        :param str username: The new user name. If not supplied a random user name will</span>
+<span class="sd">                             be generated by the bridge.</span>
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the new username when complete.</span>
+<span class="sd">        :rtype: str</span>
+<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
+<span class="sd">        :raises NoLinkButtonPressedException: If the link button was not pressed.</span>
+<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;devicetype&#39;</span><span class="p">:</span> <span class="n">devicetype</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">username</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">body</span><span class="p">[</span><span class="s">&#39;username&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">username</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="s">&quot;POST&quot;</span><span class="p">,</span> <span class="s">&quot;/api&quot;</span><span class="p">,</span> <span class="n">body</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_username</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s">&#39;success&#39;</span><span class="p">][</span><span class="s">&#39;username&#39;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span>
+</div>
+    <span class="nd">@tornado.gen.coroutine</span>
+<div class="viewcode-block" id="Bridge.create_group"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.create_group">[docs]</a>    <span class="k">def</span> <span class="nf">create_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lights</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create a new group for this bridge.</span>
+
+<span class="sd">        :param list lights: a list of lamp IDs (`int`).</span>
+<span class="sd">        :param str name: Name for this group, optional argument.</span>
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
+<span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
+<span class="sd">        :rtype: dict</span>
+<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
+<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;lights&#39;</span><span class="p">:[</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">lights</span><span class="p">]}</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">body</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;POST&quot;</span><span class="p">,</span> <span class="s">&quot;/groups&quot;</span><span class="p">,</span> <span class="n">body</span><span class="p">)</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">r&quot;/groups/(\d+)&quot;</span><span class="p">,</span> <span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&quot;success&quot;</span><span class="p">][</span><span class="s">&quot;id&quot;</span><span class="p">])</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">group</span><span class="p">]</span> <span class="o">=</span> <span class="n">lights</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">res</span>
+</div>
+    <span class="nd">@tornado.gen.coroutine</span>
+<div class="viewcode-block" id="Bridge.delete_group"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.delete_group">[docs]</a>    <span class="k">def</span> <span class="nf">delete_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Delete a new group from this bridge.</span>
+
+<span class="sd">        :param int i: ID number for the group to be removed.</span>
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
+<span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
+<span class="sd">        :rtype: dict</span>
+<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
+<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;DELETE&quot;</span><span class="p">,</span> <span class="s">&quot;/groups/{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)))[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">res</span>
+</div>
+    <span class="nd">@tornado.gen.coroutine</span>
+<div class="viewcode-block" id="Bridge.update_info"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.update_info">[docs]</a>    <span class="k">def</span> <span class="nf">update_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Update the Hue bridge metadata.</span>
+
+<span class="sd">        If the current `username` is valid, `logged_in` will be set to `True` and</span>
+<span class="sd">        `gateway`, `netmask`, `name` and `mac` will be updated; otherwise, `logged_in`</span>
+<span class="sd">        will be set to `False` and the remaining attributes to `None`.</span>
+
+<span class="sd">        :return: A `tornado.concurrent.Future` that completes when the update attempt completes.</span>
+<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;GET&quot;</span><span class="p">,</span> <span class="s">&quot;/&quot;</span><span class="p">)</span>
+            <span class="n">info</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;config&quot;</span><span class="p">]</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">logged_in</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gateway</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s">&#39;gateway&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">netmask</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s">&#39;netmask&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mac</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s">&#39;mac&#39;</span><span class="p">]</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">light_data</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">lamp_num</span><span class="p">,</span> <span class="n">lamp</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;lights&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">state</span> <span class="o">=</span> <span class="n">lamp</span><span class="p">[</span><span class="s">&quot;state&quot;</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">state</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ignoredkeys</span><span class="p">:</span>
+                        <span class="k">continue</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">light_data</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">lamp_num</span><span class="p">)][</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+            <span class="k">for</span> <span class="n">group_num</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;groups&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">lights</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="s">&quot;lights&quot;</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">group_num</span><span class="p">)]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">lights</span><span class="p">]</span>
+        <span class="k">except</span> <span class="n">UnauthorizedUserException</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&quot;Couldn&#39;t send request to </span><span class="si">%s</span><span class="s"> using username </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">serial_number</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logged_in</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gateway</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">netmask</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mac</span> <span class="o">=</span> <span class="bp">None</span>
+
+</div></div>
+<div class="viewcode-block" id="LightGrid"><a class="viewcode-back" href="../playhouse.html#playhouse.LightGrid">[docs]</a><span class="k">class</span> <span class="nc">LightGrid</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">usernames</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">grid</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">buffered</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">defaults</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">assert_reachable</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create a new light grid-</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            username: Map of serial number -&gt; username pairs</span>
+<span class="sd">            grid: A list of lists of (mac address, light) tuples, specifying</span>
+<span class="sd">                a light belonging to a bridge with the given mac address.</span>
+<span class="sd">                Maps (x,y) coordinates to the light specified at grid[y][x].</span>
+<span class="sd">            buffered: If True, calls to set_state will not prompt an immediate</span>
+<span class="sd">                request to the bridge in question; to send the buffered state</span>
+<span class="sd">                changes, run commit.</span>
+<span class="sd">            defaults: Additional instructions to include in each state change</span>
+<span class="sd">                request to a bridge.</span>
+<span class="sd">            assert_reachable: If true, the grid will occasionally check that all</span>
+<span class="sd">                bridges are reachable; any unreachable bridge will be removed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defaults</span> <span class="o">=</span> <span class="n">defaults</span> <span class="k">if</span> <span class="n">defaults</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bridges</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">usernames</span> <span class="o">=</span> <span class="n">usernames</span> <span class="k">if</span> <span class="n">usernames</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">buffered</span> <span class="o">=</span> <span class="n">buffered</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">grid</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_grid</span><span class="p">(</span><span class="n">grid</span> <span class="k">if</span> <span class="n">grid</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="p">[])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">running</span> <span class="o">=</span> <span class="bp">True</span>
+
+        <span class="k">if</span> <span class="n">assert_reachable</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assert_reachable</span><span class="p">()</span>
+
+    <span class="nd">@tornado.gen.coroutine</span>
+<div class="viewcode-block" id="LightGrid.add_bridge"><a class="viewcode-back" href="../playhouse.html#playhouse.LightGrid.add_bridge">[docs]</a>    <span class="k">def</span> <span class="nf">add_bridge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ip_address_or_bridge</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Add a new bridge to this light grid</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ip_address_or_bridge: Can be either a Bridge object, or an IP address to the bridge, in which case a new Bridge object will be created.</span>
+<span class="sd">            username: User name for this bridge. User names are required to perform most bridge commands.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># can take an already instantiated bridge instance</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">ip_address_or_bridge</span><span class="p">)</span> <span class="ow">is</span> <span class="n">Bridge</span><span class="p">:</span>
+            <span class="n">bridge</span> <span class="o">=</span> <span class="n">ip_address_or_bridge</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">bridge</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">Bridge</span><span class="p">(</span><span class="n">ip_address_or_bridge</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">defaults</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_bridge</span><span class="p">(</span><span class="n">bridge</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">BridgeAlreadyAddedException</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">bridge</span><span class="o">.</span><span class="n">username</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">bridge</span><span class="o">.</span><span class="n">serial_number</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">usernames</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">bridge</span><span class="o">.</span><span class="n">set_username</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">usernames</span><span class="p">[</span><span class="n">bridge</span><span class="o">.</span><span class="n">serial_number</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bridges</span><span class="p">[</span><span class="n">bridge</span><span class="o">.</span><span class="n">serial_number</span><span class="p">]</span> <span class="o">=</span> <span class="n">bridge</span>
+        <span class="k">return</span> <span class="n">bridge</span>
+</div>
+<div class="viewcode-block" id="LightGrid.has_bridge"><a class="viewcode-back" href="../playhouse.html#playhouse.LightGrid.has_bridge">[docs]</a>    <span class="k">def</span> <span class="nf">has_bridge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mac_or_bridge</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check if this light grid has a particular bridge stored in its configuration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            mac_or_bridge: Either a MAC addressed for the requested bridge, or a Bridge object, in which case this method will search for a bridge with the same MAC address as the provided Bridge object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">mac_or_bridge</span><span class="p">)</span> <span class="ow">is</span> <span class="n">Bridge</span><span class="p">:</span>
+            <span class="n">mac</span> <span class="o">=</span> <span class="n">mac_or_bridge</span><span class="o">.</span><span class="n">serial_number</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mac</span> <span class="o">=</span> <span class="n">mac_or_bridge</span>
+
+        <span class="k">return</span> <span class="n">mac</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">bridges</span>
+</div>
+<div class="viewcode-block" id="LightGrid.set_usernames"><a class="viewcode-back" href="../playhouse.html#playhouse.LightGrid.set_usernames">[docs]</a>    <span class="k">def</span> <span class="nf">set_usernames</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">usernames</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets the user name map for this light grid.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            username: Map of serial number -&gt; username pairs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">usernames</span> <span class="o">=</span> <span class="n">usernames</span>
+</div>
+    <span class="k">def</span> <span class="nf">set_grid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grid</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grid</span> <span class="o">=</span> <span class="n">grid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+    <span class="nd">@tornado.gen.coroutine</span>
+<div class="viewcode-block" id="LightGrid.set_state"><a class="viewcode-back" href="../playhouse.html#playhouse.LightGrid.set_state">[docs]</a>    <span class="k">def</span> <span class="nf">set_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="n">args</span><span class="p">):</span>
+        <span class="c"># pylint: disable=invalid-name</span>
+        <span class="sd">&quot;&quot;&quot;Set the state for a specific lamp.</span>
+
+<span class="sd">        If this grid is buffered, the state will not be sent to the lamp immediately; run</span>
+<span class="sd">        commit to send the buffered state changes.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x: X coordinate</span>
+<span class="sd">            y: Y coordinate</span>
+<span class="sd">            args: State argument, see Philips Hue documentation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span><span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">buffered</span><span class="p">:</span>
+            <span class="n">exceptions</span> <span class="o">=</span> <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">exceptions</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c"># pass on first (and only, since this grid isn&#39;t buffered) exception</span>
+                <span class="k">raise</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">exceptions</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+</div>
+    <span class="nd">@tornado.gen.coroutine</span>
+    <span class="k">def</span> <span class="nf">set_all</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">args</span><span class="p">):</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">exc</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">ExceptionCatcher</span><span class="p">({</span><span class="n">bridge</span><span class="o">.</span><span class="n">serial_number</span><span class="p">:</span> <span class="n">bridge</span><span class="o">.</span><span class="n">set_group</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">args</span><span class="p">)</span>
+                                           <span class="k">for</span> <span class="n">bridge</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">bridges</span><span class="o">.</span><span class="n">values</span><span class="p">()})</span>
+        <span class="k">return</span> <span class="n">exc</span>
+
+
+    <span class="nd">@tornado.gen.coroutine</span>
+<div class="viewcode-block" id="LightGrid.commit"><a class="viewcode-back" href="../playhouse.html#playhouse.LightGrid.commit">[docs]</a>    <span class="k">def</span> <span class="nf">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Commit saved state changes to the lamps&quot;&quot;&quot;</span>
+
+        <span class="n">futures</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">exceptions</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">),</span> <span class="n">changes</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="ow">or</span> <span class="n">y</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">y</span><span class="p">][</span><span class="n">x</span><span class="p">]</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">OutsideGridException</span>
+
+                <span class="n">mac</span><span class="p">,</span> <span class="n">light</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">y</span><span class="p">][</span><span class="n">x</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">mac</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">bridges</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">NoBridgeAtCoordinateException</span>
+
+                <span class="n">bridge</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bridges</span><span class="p">[</span><span class="n">mac</span><span class="p">]</span>
+                <span class="n">futures</span><span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)]</span> <span class="o">=</span> <span class="n">bridge</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">light</span><span class="p">,</span> <span class="o">**</span><span class="n">changes</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="n">OutsideGridException</span><span class="p">,</span> <span class="n">NoBridgeAtCoordinateException</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">exceptions</span><span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)]</span> <span class="o">=</span> <span class="n">e</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+        <span class="n">res</span><span class="p">,</span> <span class="n">exc</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">ExceptionCatcher</span><span class="p">(</span><span class="n">futures</span><span class="p">)</span>
+        <span class="n">exceptions</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Got results </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">res</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Got exceptions </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">exceptions</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">exceptions</span>
+</div>
+    <span class="nd">@tornado.gen.coroutine</span>
+    <span class="k">def</span> <span class="nf">assert_reachable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">strikes</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">running</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">tornado</span><span class="o">.</span><span class="n">gen</span><span class="o">.</span><span class="n">Task</span><span class="p">(</span><span class="n">tornado</span><span class="o">.</span><span class="n">ioloop</span><span class="o">.</span><span class="n">IOLoop</span><span class="o">.</span><span class="n">current</span><span class="p">()</span><span class="o">.</span><span class="n">add_timeout</span><span class="p">,</span>
+                                       <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="mi">20</span><span class="p">))</span>
+
+                <span class="n">macs_to_remove</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">mac</span><span class="p">,</span> <span class="n">bridge</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">bridges</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Pinging bridge </span><span class="si">%s</span><span class="s"> at </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span>
+                                  <span class="n">mac</span><span class="p">,</span> <span class="n">bridge</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">)</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">res</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">bridge</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;GET&quot;</span><span class="p">,</span> <span class="s">&quot;/config&quot;</span><span class="p">,</span>
+                                                        <span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">force_send</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">res</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&#39;Philips hue&#39;</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="ne">ValueError</span>
+                        <span class="n">strikes</span><span class="p">[</span><span class="n">bridge</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">,</span>
+                            <span class="ne">UnicodeError</span><span class="p">,</span> <span class="n">tornado</span><span class="o">.</span><span class="n">httpclient</span><span class="o">.</span><span class="n">HTTPError</span><span class="p">):</span>
+                        <span class="n">strikes</span><span class="p">[</span><span class="n">bridge</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&quot;Couldn&#39;t reach bridge at </span><span class="si">%s</span><span class="s">; strikes: </span><span class="si">%s</span><span class="s">/3&quot;</span><span class="p">,</span>
+                                      <span class="n">bridge</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">,</span> <span class="n">strikes</span><span class="p">[</span><span class="n">bridge</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">])</span>
+
+                        <span class="k">if</span> <span class="n">strikes</span><span class="p">[</span><span class="n">bridge</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+                            <span class="n">macs_to_remove</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">mac</span><span class="p">)</span>
+                            <span class="k">del</span> <span class="n">strikes</span><span class="p">[</span><span class="n">bridge</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">]</span>
+
+                <span class="k">for</span> <span class="n">mac</span> <span class="ow">in</span> <span class="n">macs_to_remove</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&quot;Removing bridge </span><span class="si">%s</span><span class="s"> at </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">mac</span><span class="p">,</span> <span class="n">bridge</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">)</span>
+                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">bridges</span><span class="p">[</span><span class="n">mac</span><span class="p">]</span>
+
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">macs_to_remove</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Attempting to find lost bridges&quot;</span><span class="p">)</span>
+                    <span class="n">new_bridges</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">discover</span><span class="p">()</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Found bridges: </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="p">{</span><span class="n">b</span><span class="o">.</span><span class="n">serial_number</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">ipaddress</span>
+                                                       <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">new_bridges</span><span class="p">})</span>
+
+                    <span class="k">for</span> <span class="n">bridge</span> <span class="ow">in</span> <span class="n">new_bridges</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">bridge</span><span class="o">.</span><span class="n">serial_number</span> <span class="ow">in</span> <span class="n">macs_to_remove</span><span class="p">:</span>
+                            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Re-adding </span><span class="si">%s</span><span class="s"> at </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span>
+                                         <span class="n">bridge</span><span class="o">.</span><span class="n">serial_number</span><span class="p">,</span> <span class="n">bridge</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">)</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">add_bridge</span><span class="p">(</span><span class="n">bridge</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s">&quot;Encountered exception while pinging bridges&quot;</span><span class="p">)</span>
+
+</div>
+<span class="k">class</span> <span class="nc">AsyncSocket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setblocking</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_responses</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_io_loop</span> <span class="o">=</span> <span class="n">tornado</span><span class="o">.</span><span class="n">ioloop</span><span class="o">.</span><span class="n">IOLoop</span><span class="o">.</span><span class="n">current</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_timeout</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_future</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_timeout_handle</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">wait_for_responses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_responses</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_timeout</span> <span class="o">=</span> <span class="n">timeout</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_future</span> <span class="o">=</span> <span class="n">tornado</span><span class="o">.</span><span class="n">concurrent</span><span class="o">.</span><span class="n">Future</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_io_loop</span><span class="o">.</span><span class="n">add_handler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fileno</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fetch_response</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_io_loop</span><span class="o">.</span><span class="n">READ</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_timeout</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_future</span>
+
+    <span class="k">def</span> <span class="nf">_set_timeout</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_timeout_handle</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_io_loop</span><span class="o">.</span><span class="n">add_timeout</span><span class="p">(</span>
+            <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_timeout</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_timeout</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_fetch_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_fd</span><span class="p">,</span> <span class="n">_events</span><span class="p">):</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_responses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">recvfrom</span><span class="p">(</span><span class="mi">1024</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_io_loop</span><span class="o">.</span><span class="n">remove_timeout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_timeout_handle</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_timeout</span><span class="p">()</span>
+            <span class="k">except</span> <span class="n">socket</span><span class="o">.</span><span class="n">error</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">errno</span><span class="o">.</span><span class="n">EWOULDBLOCK</span><span class="p">,</span> <span class="n">errno</span><span class="o">.</span><span class="n">EAGAIN</span><span class="p">):</span>
+                    <span class="k">raise</span>
+                <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">_on_timeout</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_io_loop</span><span class="o">.</span><span class="n">remove_handler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fileno</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_future</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_responses</span><span class="p">)</span>
+
+
+<span class="nd">@tornado.gen.coroutine</span>
+<div class="viewcode-block" id="discover"><a class="viewcode-back" href="../playhouse.html#playhouse.discover">[docs]</a><span class="k">def</span> <span class="nf">discover</span><span class="p">(</span><span class="n">attempts</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">AsyncSocket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_DGRAM</span><span class="p">)</span>
+    <span class="n">s</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">SOL_SOCKET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SO_REUSEADDR</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">s</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">IPPROTO_IP</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">IP_MULTICAST_TTL</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">message</span> <span class="o">=</span> <span class="n">b</span><span class="s">&#39;M-SEARCH * HTTP/1.1</span><span class="se">\r\n</span><span class="s">&#39;</span>\
+              <span class="n">b</span><span class="s">&#39;HOST: 239.255.255.250:1900</span><span class="se">\r\n</span><span class="s">&#39;</span>\
+              <span class="n">b</span><span class="s">&#39;MAN: &quot;ssdp:discover&quot;</span><span class="se">\r\n</span><span class="s">&#39;</span>\
+              <span class="n">b</span><span class="s">&#39;ST: my:test</span><span class="se">\r\n</span><span class="s">&#39;</span>\
+              <span class="n">b</span><span class="s">&#39;MX: 3</span><span class="se">\r\n\r\n</span><span class="s">&#39;</span>
+
+    <span class="n">locations</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Fetching bridges from meethue.com&quot;</span><span class="p">)</span>
+        <span class="n">nupnp_response</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">tornado</span><span class="o">.</span><span class="n">httpclient</span><span class="o">.</span><span class="n">AsyncHTTPClient</span><span class="p">()</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span>
+            <span class="s">&quot;http://www.meethue.com/api/nupnp&quot;</span><span class="p">,</span> <span class="n">request_timeout</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">nupnp_bridges</span> <span class="o">=</span> <span class="n">tornado</span><span class="o">.</span><span class="n">escape</span><span class="o">.</span><span class="n">json_decode</span><span class="p">(</span><span class="n">nupnp_response</span><span class="o">.</span><span class="n">body</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Response from meethue.com was </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">nupnp_bridges</span><span class="p">)</span>
+        <span class="n">locations</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">bridge</span><span class="p">[</span><span class="s">&#39;internalipaddress&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">bridge</span> <span class="ow">in</span> <span class="n">nupnp_bridges</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">tornado</span><span class="o">.</span><span class="n">httpclient</span><span class="o">.</span><span class="n">HTTPError</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Couldn&#39;t connect to meethue.com&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">attempts</span><span class="p">):</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Broadcasting </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">sendto</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="p">(</span><span class="s">&quot;239.255.255.250&quot;</span><span class="p">,</span> <span class="mi">1900</span><span class="p">))</span>
+
+        <span class="n">responses</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">s</span><span class="o">.</span><span class="n">wait_for_responses</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">raw</span><span class="p">,</span> <span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">port</span><span class="p">)</span> <span class="ow">in</span> <span class="n">responses</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">:</span><span class="si">%s</span><span class="s"> says: </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">address</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">raw</span><span class="p">)</span>
+
+            <span class="c"># NOTE: we&#39;ll skip doing any checks in particular here,</span>
+            <span class="c"># and instead just rely on Bridge.__new__ to</span>
+            <span class="c"># correctly identify whether the address belongs to</span>
+            <span class="c"># a Hue bridge or not</span>
+
+            <span class="c">#response = io.BytesIO(raw)</span>
+
+            <span class="c">#logging.debug(&quot;Got response: %s&quot;, response)</span>
+
+            <span class="c">#response.makefile = lambda *args, **kwargs: response</span>
+            <span class="c">#header = http.client.HTTPResponse(response)</span>
+            <span class="c">#header.begin()</span>
+
+            <span class="c">#logging.debug(&quot;Response status was %s and location header was %s&quot;,</span>
+                            <span class="c">#header.status, header.getheader(&#39;location&#39;))</span>
+            <span class="c">#if header.status == 200 and header.getheader(&#39;location&#39;) is not None:</span>
+                <span class="c">#logging.debug(&quot;Adding %s to list&quot;, address)</span>
+                <span class="c">#locations.add(address)</span>
+
+            <span class="n">locations</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">address</span><span class="p">)</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;List of addresses is </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">locations</span><span class="p">)</span>
+    <span class="n">bridges</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">loc</span> <span class="ow">in</span> <span class="n">locations</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Attempting to find a bridge at </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">loc</span><span class="p">)</span>
+            <span class="n">bridges</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="k">yield</span> <span class="n">Bridge</span><span class="p">(</span><span class="n">loc</span><span class="p">)))</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Bridge found&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">NoBridgeFoundException</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Bridge not found&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">bridges</span>
+</div>
+<span class="k">def</span> <span class="nf">parse_description</span><span class="p">(</span><span class="n">document</span><span class="p">):</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">namespaces</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">event</span><span class="p">,</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">ElementTree</span><span class="o">.</span><span class="n">iterparse</span><span class="p">(</span><span class="n">document</span><span class="p">,</span> <span class="p">(</span><span class="s">&quot;start&quot;</span><span class="p">,</span> <span class="s">&quot;start-ns&quot;</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">event</span> <span class="o">==</span> <span class="s">&quot;start-ns&quot;</span><span class="p">:</span>
+            <span class="n">namespaces</span><span class="p">[</span><span class="n">elem</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">elem</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span> <span class="k">else</span> <span class="s">&#39;default&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">elem</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="s">&quot;start&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">root</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">root</span> <span class="o">=</span> <span class="n">elem</span>
+
+    <span class="k">return</span> <span class="n">ElementTree</span><span class="o">.</span><span class="n">ElementTree</span><span class="p">(</span><span class="n">root</span><span class="p">),</span> <span class="n">namespaces</span>
+
+<span class="k">def</span> <span class="nf">rgb2xy</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converts an RGB colour to XY colour format.&quot;&quot;&quot;</span>
+
+    <span class="c"># Apply gamma</span>
+    <span class="k">if</span> <span class="n">red</span> <span class="o">&gt;</span> <span class="mf">0.04045</span><span class="p">:</span>
+        <span class="n">red</span> <span class="o">=</span> <span class="p">((</span><span class="n">red</span> <span class="o">+</span> <span class="mf">0.055</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="mf">0.055</span><span class="p">))</span><span class="o">**</span><span class="mf">2.4</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">red</span> <span class="o">=</span> <span class="n">red</span> <span class="o">/</span> <span class="mf">12.92</span>
+
+    <span class="k">if</span> <span class="n">green</span> <span class="o">&gt;</span> <span class="mf">0.04045</span><span class="p">:</span>
+        <span class="n">green</span> <span class="o">=</span> <span class="p">((</span><span class="n">green</span> <span class="o">+</span> <span class="mf">0.055</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="mf">0.055</span><span class="p">))</span><span class="o">**</span><span class="mf">2.4</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">green</span> <span class="o">=</span> <span class="n">green</span> <span class="o">/</span> <span class="mf">12.92</span>
+
+    <span class="k">if</span> <span class="n">blue</span> <span class="o">&gt;</span> <span class="mf">0.04045</span><span class="p">:</span>
+        <span class="n">blue</span> <span class="o">=</span> <span class="p">((</span><span class="n">blue</span> <span class="o">+</span> <span class="mf">0.055</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="mf">0.055</span><span class="p">))</span><span class="o">**</span><span class="mf">2.4</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">blue</span> <span class="o">=</span> <span class="n">blue</span> <span class="o">/</span> <span class="mf">12.92</span>
+
+    <span class="c"># pylint: disable=invalid-name</span>
+    <span class="c"># Convert to XYZ</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">red</span> <span class="o">*</span> <span class="mf">0.649926</span> <span class="o">+</span> <span class="n">green</span> <span class="o">*</span> <span class="mf">0.103455</span> <span class="o">+</span> <span class="n">blue</span> <span class="o">*</span> <span class="mf">0.197109</span>
+    <span class="n">Y</span> <span class="o">=</span> <span class="n">red</span> <span class="o">*</span> <span class="mf">0.234327</span> <span class="o">+</span> <span class="n">green</span> <span class="o">*</span> <span class="mf">0.743075</span> <span class="o">+</span> <span class="n">blue</span> <span class="o">*</span> <span class="mf">0.022598</span>
+    <span class="n">Z</span> <span class="o">=</span> <span class="n">red</span> <span class="o">*</span> <span class="mf">0.000000</span> <span class="o">+</span> <span class="n">green</span> <span class="o">*</span> <span class="mf">0.053077</span> <span class="o">+</span> <span class="n">blue</span> <span class="o">*</span> <span class="mf">1.035763</span>
+
+    <span class="c"># Calculate xy values</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">X</span> <span class="o">/</span> <span class="p">(</span><span class="n">X</span> <span class="o">+</span> <span class="n">Y</span> <span class="o">+</span> <span class="n">Z</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">Y</span> <span class="o">/</span> <span class="p">(</span><span class="n">X</span> <span class="o">+</span> <span class="n">Y</span> <span class="o">+</span> <span class="n">Z</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">Playhouse 0.1 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, John Eriksson, Arvid Fahlström Myrman, Jonas Höglund, Hannes Leskelä, Christian Lidström, Mattias Palo, Markus Videll, Tomas Wickman, Emil Öhman.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

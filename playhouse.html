@@ -1,0 +1,725 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>playhouse — Python library for communicating with Philips Hue bridges &mdash; Playhouse 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Playhouse 0.1 documentation" href="index.html" />
+    <link rel="up" title="Light server" href="backend.html" />
+    <link rel="next" title="lightserver — Server exposing a REST-inspired API for controlling Philips Hue bridges" href="lightserver.html" />
+    <link rel="prev" title="Light server" href="backend.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="lightserver.html" title="lightserver — Server exposing a REST-inspired API for controlling Philips Hue bridges"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="backend.html" title="Light server"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">Playhouse 0.1 documentation</a> &raquo;</li>
+          <li><a href="backend.html" accesskey="U">Light server</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-playhouse">
+<span id="playhouse-python-library-for-communicating-with-philips-hue-bridges"></span><h1><a class="reference internal" href="#module-playhouse" title="playhouse"><tt class="xref py py-mod docutils literal"><span class="pre">playhouse</span></tt></a> &#8212; Python library for communicating with Philips Hue bridges<a class="headerlink" href="#module-playhouse" title="Permalink to this headline">¶</a></h1>
+<p>A <a class="reference external" href="http://www.tornadoweb.org/">Tornado</a>-based Python library for communicating
+with Philips Hue bridges.</p>
+<p>This library exposes the Philips Hue API, normally a JSON API, as an object oriented Python API.
+These methods require that the <a class="reference external" href="http://www.tornadoweb.org/en/stable/ioloop.html#tornado.ioloop.IOLoop" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">IOLoop</span></tt></a> returned by <a class="reference external" href="http://www.tornadoweb.org/en/stable/ioloop.html#tornado.ioloop.IOLoop.current" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">tornado.ioloop.IOLoop.current</span></tt></a>
+is running in order to function.</p>
+<dl class="class">
+<dt id="playhouse.Bridge">
+<em class="property">class </em><tt class="descclassname">playhouse.</tt><tt class="descname">Bridge</tt><a class="reference internal" href="_modules/playhouse.html#Bridge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Instances of the Bridge handle a connection to a specific Hue bridge.</p>
+<p>Hue bridges communicate through a RESTful JSON API through TCP port 80.
+This class wraps this RESTful interface and provides a Python API for
+convenient Hue bridge operation. The functions for setting the current
+state of a particular lamp uses the Hue light state names, see
+<a class="reference external" href="http://developers.meethue.com/1_lightsapi.html#16_set_light_state">http://developers.meethue.com/1_lightsapi.html#16_set_light_state</a> for reference.</p>
+<dl class="staticmethod">
+<dt id="playhouse.Bridge.__new__">
+<em class="property">static </em><tt class="descname">__new__</tt><big>(</big><em>ipaddress</em>, <em>username=None</em>, <em>defaults=None</em>, <em>timeout=2</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.__new__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.__new__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new Bridge object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>ipaddress</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#str" title="(in Python v2.7)"><em>str</em></a>) &#8211; The IP address for this bridge</li>
+<li><strong>username</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#str" title="(in Python v2.7)"><em>str</em></a>) &#8211; The username for this bridge as described in the Hue documentation.
+Required for most commands.</li>
+<li><strong>defaults</strong> (<a class="reference external" href="http://docs.python.org/library/stdtypes.html#dict" title="(in Python v2.7)"><em>dict</em></a>) &#8211; A dictionary containing default state changes to be sent with any
+state-changing commands.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) &#8211; The time in seconds to wait for any requests to the Hue bridge
+to complete.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A <a class="reference external" href="http://www.tornadoweb.org/en/stable/concurrent.html#tornado.concurrent.Future" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">tornado.concurrent.Future</span></tt></a> that resolves to a bridge object when completed.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">Raises NoBridgeFoundException:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body"><p class="first last">If no bridge was found at the given IP address.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="playhouse.Bridge.ipaddress">
+<tt class="descname">ipaddress</tt><a class="headerlink" href="#playhouse.Bridge.ipaddress" title="Permalink to this definition">¶</a></dt>
+<dd><p>The IP address of the bridge.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="playhouse.Bridge.serial_number">
+<tt class="descname">serial_number</tt><a class="headerlink" href="#playhouse.Bridge.serial_number" title="Permalink to this definition">¶</a></dt>
+<dd><p>The serial number of the bridge. This is the same as the MAC address.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="playhouse.Bridge.username">
+<tt class="descname">username</tt><a class="headerlink" href="#playhouse.Bridge.username" title="Permalink to this definition">¶</a></dt>
+<dd><p>The current username.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="playhouse.Bridge.logged_in">
+<tt class="descname">logged_in</tt><a class="headerlink" href="#playhouse.Bridge.logged_in" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference external" href="http://docs.python.org/library/constants.html#True" title="(in Python v2.7)"><tt class="xref py py-obj docutils literal"><span class="pre">True</span></tt></a> if the current username is valid for use with the bridge, <a class="reference external" href="http://docs.python.org/library/constants.html#False" title="(in Python v2.7)"><tt class="xref py py-obj docutils literal"><span class="pre">False</span></tt></a> otherwise.
+This value is updated by <a class="reference internal" href="#playhouse.Bridge.update_info" title="playhouse.Bridge.update_info"><tt class="xref py py-obj docutils literal"><span class="pre">update_info</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="playhouse.Bridge.name">
+<tt class="descname">name</tt><a class="headerlink" href="#playhouse.Bridge.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>The UPnP name of this bridge. Will be <a class="reference external" href="http://docs.python.org/library/constants.html#None" title="(in Python v2.7)"><tt class="xref py py-obj docutils literal"><span class="pre">None</span></tt></a> until successfully updated by <a class="reference internal" href="#playhouse.Bridge.update_info" title="playhouse.Bridge.update_info"><tt class="xref py py-obj docutils literal"><span class="pre">update_info</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="playhouse.Bridge.mac">
+<tt class="descname">mac</tt><a class="headerlink" href="#playhouse.Bridge.mac" title="Permalink to this definition">¶</a></dt>
+<dd><p>The MAC address as reported by the bridge. Will be <a class="reference external" href="http://docs.python.org/library/constants.html#None" title="(in Python v2.7)"><tt class="xref py py-obj docutils literal"><span class="pre">None</span></tt></a> until successfully updated by
+<a class="reference internal" href="#playhouse.Bridge.update_info" title="playhouse.Bridge.update_info"><tt class="xref py py-obj docutils literal"><span class="pre">update_info</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="playhouse.Bridge.gateway">
+<tt class="descname">gateway</tt><a class="headerlink" href="#playhouse.Bridge.gateway" title="Permalink to this definition">¶</a></dt>
+<dd><p>The gateway of this bridge. Will be <a class="reference external" href="http://docs.python.org/library/constants.html#None" title="(in Python v2.7)"><tt class="xref py py-obj docutils literal"><span class="pre">None</span></tt></a> until successfully updated by <a class="reference internal" href="#playhouse.Bridge.update_info" title="playhouse.Bridge.update_info"><tt class="xref py py-obj docutils literal"><span class="pre">update_info</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="playhouse.Bridge.netmask">
+<tt class="descname">netmask</tt><a class="headerlink" href="#playhouse.Bridge.netmask" title="Permalink to this definition">¶</a></dt>
+<dd><p>The netmask of this bridge. Will be <a class="reference external" href="http://docs.python.org/library/constants.html#None" title="(in Python v2.7)"><tt class="xref py py-obj docutils literal"><span class="pre">None</span></tt></a> until successfully updated by <a class="reference internal" href="#playhouse.Bridge.update_info" title="playhouse.Bridge.update_info"><tt class="xref py py-obj docutils literal"><span class="pre">update_info</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.Bridge.set_defaults">
+<tt class="descname">set_defaults</tt><big>(</big><em>defaults</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.set_defaults"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.set_defaults" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the default state changes to be included with any calls to state-changing operations.</p>
+<p>These changes are included whenever the state is set, unless overridden
+by the provided state change argument.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>defaults</strong> (<a class="reference external" href="http://docs.python.org/library/stdtypes.html#dict" title="(in Python v2.7)"><em>dict</em></a>) &#8211; The new default state changes.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.Bridge.http_request">
+<tt class="descname">http_request</tt><big>(</big><em>method</em>, <em>url</em>, <em>body=None</em>, <em>timeout=None</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.http_request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.http_request" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send an HTTP request to the bridge.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>method</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#str" title="(in Python v2.7)"><em>str</em></a>) &#8211; HTTP request method (POST/GET/PUT/DELETE)</li>
+<li><strong>url</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#str" title="(in Python v2.7)"><em>str</em></a>) &#8211; The URL to send this request to.</li>
+<li><strong>body</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#str" title="(in Python v2.7)"><em>str</em></a>) &#8211; HTTP POST request body.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) &#8211; The time to wait for this request to complete. Defaults to
+the timeout supplied to the <a class="reference internal" href="#playhouse.Bridge" title="playhouse.Bridge"><tt class="xref py py-obj docutils literal"><span class="pre">Bridge</span></tt></a> constructor.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A <a class="reference external" href="http://www.tornadoweb.org/en/stable/concurrent.html#tornado.concurrent.Future" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">tornado.concurrent.Future</span></tt></a> that resolves to the response from the bridge
+when complete.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">str</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Raises <a class="reference external" href="http://www.tornadoweb.org/en/stable/httpclient.html#tornado.httpclient.HTTPError" title="(in Tornado v3.2.1)">tornado.httpclient.HTTPError</a>:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first last">If the HTTP request failed.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.Bridge.send_raw">
+<tt class="descname">send_raw</tt><big>(</big><em>method</em>, <em>url</em>, <em>body=None</em>, <em>timeout=None</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.send_raw"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.send_raw" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send an HTTP request to the bridge.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>method</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#str" title="(in Python v2.7)"><em>str</em></a>) &#8211; HTTP request method (POST/GET/PUT/DELETE).</li>
+<li><strong>url</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#str" title="(in Python v2.7)"><em>str</em></a>) &#8211; The URL to send this request to.</li>
+<li><strong>body</strong> (<a class="reference external" href="http://docs.python.org/library/stdtypes.html#dict" title="(in Python v2.7)"><em>dict</em></a>) &#8211; HTTP POST request body as a Python dictionary. The dictionary
+will be converted to a JSON string.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) &#8211; The time to wait for this request to complete. Defaults to
+the timeout supplied to the <a class="reference internal" href="#playhouse.Bridge" title="playhouse.Bridge"><tt class="xref py py-obj docutils literal"><span class="pre">Bridge</span></tt></a> constructor.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A <a class="reference external" href="http://www.tornadoweb.org/en/stable/concurrent.html#tornado.concurrent.Future" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">tornado.concurrent.Future</span></tt></a> that resolves to the response from the bridge,
+converted from JSON to a Python dictionary, when complete.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">dict</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference external" href="http://www.tornadoweb.org/en/stable/httpclient.html#tornado.httpclient.HTTPError" title="(in Tornado v3.2.1)"><strong>tornado.httpclient.HTTPError</strong></a> &#8211; If the HTTP request failed.</li>
+<li><strong>HueAPIException</strong> &#8211; If the Hue API returned an error.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.Bridge.send_request">
+<tt class="descname">send_request</tt><big>(</big><em>method</em>, <em>url</em>, <em>body=None</em>, <em>timeout=None</em>, <em>force_send=False</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.send_request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.send_request" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a HTTP request to the bridge.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>method</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#str" title="(in Python v2.7)"><em>str</em></a>) &#8211; HTTP request method (POST/GET/PUT/DELETE).</li>
+<li><strong>url</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#str" title="(in Python v2.7)"><em>str</em></a>) &#8211; The URL to send this request to. Unlike the other HTTP request
+methods, this argument should only include the part of the URL
+which is after the username.</li>
+<li><strong>body</strong> (<a class="reference external" href="http://docs.python.org/library/stdtypes.html#dict" title="(in Python v2.7)"><em>dict</em></a>) &#8211; HTTP POST request body as a Python dictionary. The dictionary
+will be converted to a JSON string.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) &#8211; The time to wait for this request to complete. Defaults to
+the timeout supplied to the <a class="reference internal" href="#playhouse.Bridge" title="playhouse.Bridge"><tt class="xref py py-obj docutils literal"><span class="pre">Bridge</span></tt></a> constructor.</li>
+<li><strong>force_send</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#bool" title="(in Python v2.7)"><em>bool</em></a>) &#8211; By default no request will be attempted and an
+<tt class="xref py py-obj docutils literal"><span class="pre">UnauthorizedUserException</span></tt> if no username is set; setting
+this parameter to <tt class="docutils literal"><span class="pre">True</span></tt> will force a request using
+a dummy username (&#8216;none&#8217;).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A <a class="reference external" href="http://www.tornadoweb.org/en/stable/concurrent.html#tornado.concurrent.Future" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">tornado.concurrent.Future</span></tt></a> that resolves to the response from the bridge,
+converted from JSON to a Python dictionary, when complete.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">dict</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference external" href="http://www.tornadoweb.org/en/stable/httpclient.html#tornado.httpclient.HTTPError" title="(in Tornado v3.2.1)"><strong>tornado.httpclient.HTTPError</strong></a> &#8211; If the HTTP request failed.</li>
+<li><strong>HueAPIException</strong> &#8211; If the Hue API returned an error.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.Bridge.set_state">
+<tt class="descname">set_state</tt><big>(</big><em>i</em>, <em>**args</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.set_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.set_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set state of a particular lamp.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>i</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) &#8211; ID number for the light whose state to change.</li>
+<li><strong>args</strong> &#8211; Hue state changes. A full list of allowed state change can be found at
+<a class="reference external" href="http://developers.meethue.com/1_lightsapi.html#16_set_light_state">http://developers.meethue.com/1_lightsapi.html#16_set_light_state</a>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A <a class="reference external" href="http://www.tornadoweb.org/en/stable/concurrent.html#tornado.concurrent.Future" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">tornado.concurrent.Future</span></tt></a> that resolves to the response from the bridge,
+converted from JSON to a Python dictionary, when complete.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">dict</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference external" href="http://www.tornadoweb.org/en/stable/httpclient.html#tornado.httpclient.HTTPError" title="(in Tornado v3.2.1)"><strong>tornado.httpclient.HTTPError</strong></a> &#8211; If the HTTP request failed.</li>
+<li><strong>HueAPIException</strong> &#8211; If the Hue API returned an error.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.Bridge.set_group">
+<tt class="descname">set_group</tt><big>(</big><em>i</em>, <em>**args</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.set_group"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.set_group" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the state of a given lamp group.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>i</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) &#8211; ID for the group whose state to change.</li>
+<li><strong>args</strong> &#8211; Hue state changes. A full list of allowed state changes can be found at
+<a class="reference external" href="http://developers.meethue.com/1_lightsapi.html#16_set_light_state">http://developers.meethue.com/1_lightsapi.html#16_set_light_state</a>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A <a class="reference external" href="http://www.tornadoweb.org/en/stable/concurrent.html#tornado.concurrent.Future" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">tornado.concurrent.Future</span></tt></a> that resolves to the response from the bridge,
+converted from JSON to a Python dictionary, when complete.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">dict</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference external" href="http://www.tornadoweb.org/en/stable/httpclient.html#tornado.httpclient.HTTPError" title="(in Tornado v3.2.1)"><strong>tornado.httpclient.HTTPError</strong></a> &#8211; If the HTTP request failed.</li>
+<li><strong>HueAPIException</strong> &#8211; If the Hue API returned an error.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.Bridge.get_lights">
+<tt class="descname">get_lights</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.get_lights"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.get_lights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fetch a list of all lights known to the bridge.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A <a class="reference external" href="http://www.tornadoweb.org/en/stable/concurrent.html#tornado.concurrent.Future" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">tornado.concurrent.Future</span></tt></a> that resolves to the response from the bridge,
+converted from JSON to a Python dictionary, when complete.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">dict</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference external" href="http://www.tornadoweb.org/en/stable/httpclient.html#tornado.httpclient.HTTPError" title="(in Tornado v3.2.1)"><strong>tornado.httpclient.HTTPError</strong></a> &#8211; If the HTTP request failed.</li>
+<li><strong>HueAPIException</strong> &#8211; If the Hue API returned an error.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.Bridge.search_lights">
+<tt class="descname">search_lights</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.search_lights"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.search_lights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start a new light search.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A <a class="reference external" href="http://www.tornadoweb.org/en/stable/concurrent.html#tornado.concurrent.Future" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">tornado.concurrent.Future</span></tt></a> that resolves to the response from the bridge,
+converted from JSON to a Python dictionary, when complete.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">dict</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference external" href="http://www.tornadoweb.org/en/stable/httpclient.html#tornado.httpclient.HTTPError" title="(in Tornado v3.2.1)"><strong>tornado.httpclient.HTTPError</strong></a> &#8211; If the HTTP request failed.</li>
+<li><strong>HueAPIException</strong> &#8211; If the Hue API returned an error.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.Bridge.get_new_lights">
+<tt class="descname">get_new_lights</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.get_new_lights"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.get_new_lights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get a list of all lights found during the last light search.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A <a class="reference external" href="http://www.tornadoweb.org/en/stable/concurrent.html#tornado.concurrent.Future" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">tornado.concurrent.Future</span></tt></a> that resolves to the response from the bridge,
+converted from JSON to a Python dictionary, when complete.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">dict</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference external" href="http://www.tornadoweb.org/en/stable/httpclient.html#tornado.httpclient.HTTPError" title="(in Tornado v3.2.1)"><strong>tornado.httpclient.HTTPError</strong></a> &#8211; If the HTTP request failed.</li>
+<li><strong>HueAPIException</strong> &#8211; If the Hue API returned an error.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.Bridge.reset_nearby_bulb">
+<tt class="descname">reset_nearby_bulb</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.reset_nearby_bulb"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.reset_nearby_bulb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attempts to reset a Hue light bulb in proximity to the bridge.</p>
+<p>For best effect, place the bulb in close proximity to the bridge, and make
+sure that there are no other turned on Hue lights nearby.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference external" href="http://www.tornadoweb.org/en/stable/concurrent.html#tornado.concurrent.Future" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">tornado.concurrent.Future</span></tt></a> that completes when a bulb has been successfully
+reset, or when the reset attempt has failed.</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Raises BulbNotResetException:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body">If no bulb was reset.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.Bridge.get_bridge_info">
+<tt class="descname">get_bridge_info</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.get_bridge_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.get_bridge_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>TODO</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A <a class="reference external" href="http://www.tornadoweb.org/en/stable/concurrent.html#tornado.concurrent.Future" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">tornado.concurrent.Future</span></tt></a> that resolves to the response from the bridge,
+converted from JSON to a Python dictionary, when complete.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">dict</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference external" href="http://www.tornadoweb.org/en/stable/httpclient.html#tornado.httpclient.HTTPError" title="(in Tornado v3.2.1)"><strong>tornado.httpclient.HTTPError</strong></a> &#8211; If the HTTP request failed.</li>
+<li><strong>HueAPIException</strong> &#8211; If the Hue API returned an error.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.Bridge.set_username">
+<tt class="descname">set_username</tt><big>(</big><em>username</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.set_username"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.set_username" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the user name for this bridge.</p>
+<p>A valid user name is required to execute most commands.</p>
+<p><a class="reference internal" href="#playhouse.Bridge.update_info" title="playhouse.Bridge.update_info"><tt class="xref py py-obj docutils literal"><span class="pre">update_info</span></tt></a> will be run after setting the username in order to validate the username.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>username</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#str" title="(in Python v2.7)"><em>str</em></a>) &#8211; The new user name.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A <a class="reference external" href="http://www.tornadoweb.org/en/stable/concurrent.html#tornado.concurrent.Future" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">tornado.concurrent.Future</span></tt></a> that completes when <a class="reference internal" href="#playhouse.Bridge.update_info" title="playhouse.Bridge.update_info"><tt class="xref py py-obj docutils literal"><span class="pre">update_info</span></tt></a> has finished
+updating the metadata.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
+<li><strong>NoLinkButtonPressedException</strong> &#8211; If the link button was not pressed.</li>
+<li><strong>HueAPIException</strong> &#8211; If the Hue API returned an error.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.Bridge.create_user">
+<tt class="descname">create_user</tt><big>(</big><em>devicetype</em>, <em>username=None</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.create_user"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.create_user" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new user for this bridge.</p>
+<p>A valid user name is required to execute most commands. In order to create a new user,
+the link button on the Hue bridge must pressed before this command is executed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>devicetype</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#str" title="(in Python v2.7)"><em>str</em></a>) &#8211; The &#8216;type&#8217; of user. Should be related to the application
+for which this user is created.</li>
+<li><strong>username</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#str" title="(in Python v2.7)"><em>str</em></a>) &#8211; The new user name. If not supplied a random user name will
+be generated by the bridge.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A <a class="reference external" href="http://www.tornadoweb.org/en/stable/concurrent.html#tornado.concurrent.Future" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">tornado.concurrent.Future</span></tt></a> that resolves to the new username when complete.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">str</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference external" href="http://www.tornadoweb.org/en/stable/httpclient.html#tornado.httpclient.HTTPError" title="(in Tornado v3.2.1)"><strong>tornado.httpclient.HTTPError</strong></a> &#8211; If the HTTP request failed.</li>
+<li><strong>NoLinkButtonPressedException</strong> &#8211; If the link button was not pressed.</li>
+<li><strong>HueAPIException</strong> &#8211; If the Hue API returned an error.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.Bridge.create_group">
+<tt class="descname">create_group</tt><big>(</big><em>lights</em>, <em>name=None</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.create_group"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.create_group" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new group for this bridge.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>lights</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#list" title="(in Python v2.7)"><em>list</em></a>) &#8211; a list of lamp IDs (<a class="reference external" href="http://docs.python.org/library/functions.html#int" title="(in Python v2.7)"><tt class="xref py py-obj docutils literal"><span class="pre">int</span></tt></a>).</li>
+<li><strong>name</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#str" title="(in Python v2.7)"><em>str</em></a>) &#8211; Name for this group, optional argument.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A <a class="reference external" href="http://www.tornadoweb.org/en/stable/concurrent.html#tornado.concurrent.Future" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">tornado.concurrent.Future</span></tt></a> that resolves to the response from the bridge,
+converted from JSON to a Python dictionary, when complete.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">dict</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference external" href="http://www.tornadoweb.org/en/stable/httpclient.html#tornado.httpclient.HTTPError" title="(in Tornado v3.2.1)"><strong>tornado.httpclient.HTTPError</strong></a> &#8211; If the HTTP request failed.</li>
+<li><strong>HueAPIException</strong> &#8211; If the Hue API returned an error.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.Bridge.delete_group">
+<tt class="descname">delete_group</tt><big>(</big><em>i</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.delete_group"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.delete_group" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete a new group from this bridge.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>i</strong> (<a class="reference external" href="http://docs.python.org/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) &#8211; ID number for the group to be removed.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A <a class="reference external" href="http://www.tornadoweb.org/en/stable/concurrent.html#tornado.concurrent.Future" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">tornado.concurrent.Future</span></tt></a> that resolves to the response from the bridge,
+converted from JSON to a Python dictionary, when complete.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">dict</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
+<li><a class="reference external" href="http://www.tornadoweb.org/en/stable/httpclient.html#tornado.httpclient.HTTPError" title="(in Tornado v3.2.1)"><strong>tornado.httpclient.HTTPError</strong></a> &#8211; If the HTTP request failed.</li>
+<li><strong>HueAPIException</strong> &#8211; If the Hue API returned an error.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.Bridge.update_info">
+<tt class="descname">update_info</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.update_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.update_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the Hue bridge metadata.</p>
+<p>If the current <a class="reference internal" href="#playhouse.Bridge.username" title="playhouse.Bridge.username"><tt class="xref py py-obj docutils literal"><span class="pre">username</span></tt></a> is valid, <a class="reference internal" href="#playhouse.Bridge.logged_in" title="playhouse.Bridge.logged_in"><tt class="xref py py-obj docutils literal"><span class="pre">logged_in</span></tt></a> will be set to <a class="reference external" href="http://docs.python.org/library/constants.html#True" title="(in Python v2.7)"><tt class="xref py py-obj docutils literal"><span class="pre">True</span></tt></a> and
+<a class="reference internal" href="#playhouse.Bridge.gateway" title="playhouse.Bridge.gateway"><tt class="xref py py-obj docutils literal"><span class="pre">gateway</span></tt></a>, <a class="reference internal" href="#playhouse.Bridge.netmask" title="playhouse.Bridge.netmask"><tt class="xref py py-obj docutils literal"><span class="pre">netmask</span></tt></a>, <a class="reference internal" href="#playhouse.Bridge.name" title="playhouse.Bridge.name"><tt class="xref py py-obj docutils literal"><span class="pre">name</span></tt></a> and <a class="reference internal" href="#playhouse.Bridge.mac" title="playhouse.Bridge.mac"><tt class="xref py py-obj docutils literal"><span class="pre">mac</span></tt></a> will be updated; otherwise, <a class="reference internal" href="#playhouse.Bridge.logged_in" title="playhouse.Bridge.logged_in"><tt class="xref py py-obj docutils literal"><span class="pre">logged_in</span></tt></a>
+will be set to <a class="reference external" href="http://docs.python.org/library/constants.html#False" title="(in Python v2.7)"><tt class="xref py py-obj docutils literal"><span class="pre">False</span></tt></a> and the remaining attributes to <a class="reference external" href="http://docs.python.org/library/constants.html#None" title="(in Python v2.7)"><tt class="xref py py-obj docutils literal"><span class="pre">None</span></tt></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference external" href="http://www.tornadoweb.org/en/stable/concurrent.html#tornado.concurrent.Future" title="(in Tornado v3.2.1)"><tt class="xref py py-obj docutils literal"><span class="pre">tornado.concurrent.Future</span></tt></a> that completes when the update attempt completes.</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Raises <a class="reference external" href="http://www.tornadoweb.org/en/stable/httpclient.html#tornado.httpclient.HTTPError" title="(in Tornado v3.2.1)">tornado.httpclient.HTTPError</a>:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body">If the HTTP request failed.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="playhouse.LightGrid">
+<em class="property">class </em><tt class="descclassname">playhouse.</tt><tt class="descname">LightGrid</tt><big>(</big><em>usernames=None</em>, <em>grid=None</em>, <em>buffered=False</em>, <em>defaults=None</em>, <em>assert_reachable=True</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#LightGrid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.LightGrid" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="playhouse.LightGrid.add_bridge">
+<tt class="descname">add_bridge</tt><big>(</big><em>ip_address_or_bridge</em>, <em>username=None</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#LightGrid.add_bridge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.LightGrid.add_bridge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a new bridge to this light grid</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd>ip_address_or_bridge: Can be either a Bridge object, or an IP address to the bridge, in which case a new Bridge object will be created.
+username: User name for this bridge. User names are required to perform most bridge commands.</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.LightGrid.has_bridge">
+<tt class="descname">has_bridge</tt><big>(</big><em>mac_or_bridge</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#LightGrid.has_bridge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.LightGrid.has_bridge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if this light grid has a particular bridge stored in its configuration.</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd>mac_or_bridge: Either a MAC addressed for the requested bridge, or a Bridge object, in which case this method will search for a bridge with the same MAC address as the provided Bridge object.</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.LightGrid.set_usernames">
+<tt class="descname">set_usernames</tt><big>(</big><em>usernames</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#LightGrid.set_usernames"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.LightGrid.set_usernames" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the user name map for this light grid.</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd>username: Map of serial number -&gt; username pairs</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.LightGrid.set_state">
+<tt class="descname">set_state</tt><big>(</big><em>x</em>, <em>y</em>, <em>**args</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#LightGrid.set_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.LightGrid.set_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the state for a specific lamp.</p>
+<p>If this grid is buffered, the state will not be sent to the lamp immediately; run
+commit to send the buffered state changes.</p>
+<dl class="docutils">
+<dt>Args:</dt>
+<dd>x: X coordinate
+y: Y coordinate
+args: State argument, see Philips Hue documentation</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="playhouse.LightGrid.commit">
+<tt class="descname">commit</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/playhouse.html#LightGrid.commit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.LightGrid.commit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Commit saved state changes to the lamps</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="playhouse.discover">
+<tt class="descclassname">playhouse.</tt><tt class="descname">discover</tt><big>(</big><em>attempts=2</em>, <em>timeout=2</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#discover"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.discover" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="backend.html"
+                        title="previous chapter">Light server</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="lightserver.html"
+                        title="next chapter"><tt class="docutils literal"><span class="pre">lightserver</span></tt> &#8212; Server exposing a REST-inspired API for controlling Philips Hue bridges</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/playhouse.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="lightserver.html" title="lightserver — Server exposing a REST-inspired API for controlling Philips Hue bridges"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="backend.html" title="Light server"
+             >previous</a> |</li>
+        <li><a href="index.html">Playhouse 0.1 documentation</a> &raquo;</li>
+          <li><a href="backend.html" >Light server</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, John Eriksson, Arvid Fahlström Myrman, Jonas Höglund, Hannes Leskelä, Christian Lidström, Mattias Palo, Markus Videll, Tomas Wickman, Emil Öhman.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>
