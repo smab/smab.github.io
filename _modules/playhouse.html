@@ -96,14 +96,14 @@
 <span class="k">class</span> <span class="nc">BulbNotResetException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
     <span class="k">pass</span>
 
-<span class="k">class</span> <span class="nc">HueAPIException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<div class="viewcode-block" id="HueAPIException"><a class="viewcode-back" href="../playhouse.html#playhouse.HueAPIException">[docs]</a><span class="k">class</span> <span class="nc">HueAPIException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">error</span><span class="p">,</span> <span class="n">bridge</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="s">&quot;{}: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">error</span><span class="p">[</span><span class="s">&quot;error&quot;</span><span class="p">][</span><span class="s">&quot;address&quot;</span><span class="p">],</span> <span class="n">error</span><span class="p">[</span><span class="s">&quot;error&quot;</span><span class="p">][</span><span class="s">&quot;description&quot;</span><span class="p">]))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">address</span> <span class="o">=</span> <span class="n">error</span><span class="p">[</span><span class="s">&quot;error&quot;</span><span class="p">][</span><span class="s">&quot;address&quot;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">error</span><span class="p">[</span><span class="s">&quot;error&quot;</span><span class="p">][</span><span class="s">&quot;description&quot;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="n">error</span><span class="p">[</span><span class="s">&quot;error&quot;</span><span class="p">][</span><span class="s">&quot;type&quot;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">bridge</span> <span class="o">=</span> <span class="n">bridge</span>
-
+</div>
 <span class="k">class</span> <span class="nc">UnauthorizedUserException</span><span class="p">(</span><span class="n">HueAPIException</span><span class="p">):</span>
     <span class="k">pass</span>
 <span class="k">class</span> <span class="nc">BodyContainsInvalidJSONException</span><span class="p">(</span><span class="n">HueAPIException</span><span class="p">):</span>
@@ -250,7 +250,16 @@
 
     <span class="nd">@tornado.gen.coroutine</span>
 <div class="viewcode-block" id="Bridge.__new__"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.__new__">[docs]</a>    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">ipaddress</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">defaults</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Create a new Bridge object.</span>
+        <span class="sd">&quot;&quot;&quot;Create a new Bridge object. Example usage::</span>
+
+<span class="sd">            @tornado.gen.coroutine</span>
+<span class="sd">            def turn_off_lights():</span>
+<span class="sd">                future = Bridge(&quot;192.168.0.105&quot;, username=&quot;mysecretusername&quot;,</span>
+<span class="sd">                                defaults={&quot;transitiontime&quot;: 10})</span>
+<span class="sd">                bridge = yield future</span>
+<span class="sd">                yield bridge.set_group(0, on=False})</span>
+
+<span class="sd">            ioloop.run_sync(turn_off_lights)</span>
 
 <span class="sd">        :param str ipaddress: The IP address for this bridge</span>
 <span class="sd">        :param str username: The username for this bridge as described in the Hue documentation.</span>
@@ -260,7 +269,7 @@
 <span class="sd">        :param int timeout: The time in seconds to wait for any requests to the Hue bridge</span>
 <span class="sd">                            to complete.</span>
 <span class="sd">        :return: A `tornado.concurrent.Future` that resolves to a bridge object when completed.</span>
-<span class="sd">        :raises NoBridgeFoundException: If no bridge was found at the given IP address.</span>
+<span class="sd">        :raises: :exc:`NoBridgeFoundException` if no bridge was found at the given IP address.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">Bridge</span><span class="p">,</span> <span class="n">cls</span><span class="p">)</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
 
@@ -298,16 +307,6 @@
 
         <span class="k">return</span> <span class="bp">self</span>
 </div>
-<div class="viewcode-block" id="Bridge.set_defaults"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.set_defaults">[docs]</a>    <span class="k">def</span> <span class="nf">set_defaults</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">defaults</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Set the default state changes to be included with any calls to state-changing operations.</span>
-
-<span class="sd">        These changes are included whenever the state is set, unless overridden</span>
-<span class="sd">        by the provided state change argument.</span>
-
-<span class="sd">        :param dict defaults: The new default state changes.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">defaults</span> <span class="o">=</span> <span class="n">defaults</span>
-</div>
     <span class="nd">@tornado.gen.coroutine</span>
 <div class="viewcode-block" id="Bridge.http_request"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.http_request">[docs]</a>    <span class="k">def</span> <span class="nf">http_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Send an HTTP request to the bridge.</span>
@@ -319,8 +318,8 @@
 <span class="sd">                            the timeout supplied to the `Bridge` constructor.</span>
 <span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge</span>
 <span class="sd">                 when complete.</span>
-<span class="sd">        :rtype: str</span>
-<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
+<span class="sd">        :rtype: `tornado.httpclient.HTTPResponse` if the HTTP request failed.</span>
+<span class="sd">        :raises: `tornado.httpclient.HTTPError` if the HTTP request failed.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Sending request </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s"> (data: </span><span class="si">%s</span><span class="s">) to </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span>
                       <span class="n">method</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">body</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">)</span>
@@ -333,7 +332,7 @@
 </div>
     <span class="nd">@tornado.gen.coroutine</span>
 <div class="viewcode-block" id="Bridge.send_raw"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.send_raw">[docs]</a>    <span class="k">def</span> <span class="nf">send_raw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Send an HTTP request to the bridge.</span>
+        <span class="sd">&quot;&quot;&quot;Send an HTTP request to the bridge, automatically parsing the returned JSON.</span>
 
 <span class="sd">        :param str method: HTTP request method (POST/GET/PUT/DELETE).</span>
 <span class="sd">        :param str url: The URL to send this request to.</span>
@@ -343,9 +342,10 @@
 <span class="sd">                            the timeout supplied to the `Bridge` constructor.</span>
 <span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
 <span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
-<span class="sd">        :rtype: dict</span>
-<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
-<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        :rtype: `dict`</span>
+<span class="sd">        :raises: `tornado.httpclient.HTTPError` if the HTTP request failed.</span>
+
+<span class="sd">                 `HueAPIException` if the Hue API returned an error.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">body</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
             <span class="n">body</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
@@ -366,25 +366,25 @@
         <span class="k">return</span> <span class="n">res</span>
 </div>
 <div class="viewcode-block" id="Bridge.send_request"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.send_request">[docs]</a>    <span class="k">def</span> <span class="nf">send_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">force_send</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Send a HTTP request to the bridge.</span>
+        <span class="sd">&quot;&quot;&quot;Send an HTTP request to the bridge using this `Bridge` instance&#39;s `username`.</span>
 
 <span class="sd">        :param str method: HTTP request method (POST/GET/PUT/DELETE).</span>
-<span class="sd">        :param str url: The URL to send this request to. Unlike the other HTTP request</span>
-<span class="sd">                        methods, this argument should only include the part of the URL</span>
-<span class="sd">                        which is after the username.</span>
+<span class="sd">        :param str url: The URL to send this request to. ``/api/`` followed by the username</span>
+<span class="sd">                        is automatically prepended to the URL.</span>
 <span class="sd">        :param dict body: HTTP POST request body as a Python dictionary. The dictionary</span>
 <span class="sd">                          will be converted to a JSON string.</span>
 <span class="sd">        :param int timeout: The time to wait for this request to complete. Defaults to</span>
 <span class="sd">                            the timeout supplied to the `Bridge` constructor.</span>
 <span class="sd">        :param bool force_send: By default no request will be attempted and an</span>
-<span class="sd">                                `UnauthorizedUserException` if no username is set; setting</span>
-<span class="sd">                                this parameter to ``True`` will force a request using</span>
-<span class="sd">                                a dummy username (&#39;none&#39;).</span>
+<span class="sd">                                `UnauthorizedUserException` will be raised if no username is set;</span>
+<span class="sd">                                setting this parameter to `True` will force a request using</span>
+<span class="sd">                                a dummy username (``none``).</span>
 <span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
 <span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
-<span class="sd">        :rtype: dict</span>
-<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
-<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        :rtype: `dict`</span>
+<span class="sd">        :raises: `tornado.httpclient.HTTPError` if the HTTP request failed.</span>
+
+<span class="sd">                 `HueAPIException` if the Hue API returned an error.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">username</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span>
@@ -417,9 +417,10 @@
 <span class="sd">                     http://developers.meethue.com/1_lightsapi.html#16_set_light_state.</span>
 <span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
 <span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
-<span class="sd">        :rtype: dict</span>
-<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
-<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        :rtype: `dict`</span>
+<span class="sd">        :raises: `tornado.httpclient.HTTPError` if the HTTP request failed.</span>
+
+<span class="sd">                 `HueAPIException` if the Hue API returned an error.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_preprocess</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
 
@@ -446,9 +447,10 @@
 <span class="sd">                     http://developers.meethue.com/1_lightsapi.html#16_set_light_state.</span>
 <span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
 <span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
-<span class="sd">        :rtype: dict</span>
-<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
-<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        :rtype: `dict`</span>
+<span class="sd">        :raises: `tornado.httpclient.HTTPError` if the HTTP request failed.</span>
+
+<span class="sd">                 `HueAPIException` if the Hue API returned an error.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_preprocess</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
@@ -462,14 +464,52 @@
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set_state</span><span class="p">(</span><span class="s">&#39;/groups/{}/action&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="n">args</span><span class="p">)</span>
 </div>
+    <span class="nd">@tornado.gen.coroutine</span>
+<div class="viewcode-block" id="Bridge.create_group"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.create_group">[docs]</a>    <span class="k">def</span> <span class="nf">create_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lights</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create a new group for this bridge.</span>
+
+<span class="sd">        :param list lights: a list of lamp IDs (`int`).</span>
+<span class="sd">        :param str name: Name for this group, optional argument.</span>
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
+<span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
+<span class="sd">        :rtype: `dict`</span>
+<span class="sd">        :raises: `tornado.httpclient.HTTPError` if the HTTP request failed.</span>
+
+<span class="sd">                 `HueAPIException` if the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;lights&#39;</span><span class="p">:[</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">lights</span><span class="p">]}</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">body</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;POST&quot;</span><span class="p">,</span> <span class="s">&quot;/groups&quot;</span><span class="p">,</span> <span class="n">body</span><span class="p">)</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">r&quot;/groups/(\d+)&quot;</span><span class="p">,</span> <span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&quot;success&quot;</span><span class="p">][</span><span class="s">&quot;id&quot;</span><span class="p">])</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">group</span><span class="p">]</span> <span class="o">=</span> <span class="n">lights</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">res</span>
+</div>
+    <span class="nd">@tornado.gen.coroutine</span>
+<div class="viewcode-block" id="Bridge.delete_group"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.delete_group">[docs]</a>    <span class="k">def</span> <span class="nf">delete_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Delete a new group from this bridge.</span>
+
+<span class="sd">        :param int i: ID number for the group to be removed.</span>
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
+<span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
+<span class="sd">        :rtype: `dict`</span>
+<span class="sd">        :raises: `tornado.httpclient.HTTPError` if the HTTP request failed.</span>
+
+<span class="sd">                 `HueAPIException` if the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;DELETE&quot;</span><span class="p">,</span> <span class="s">&quot;/groups/{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)))[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">res</span>
+</div>
 <div class="viewcode-block" id="Bridge.get_lights"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.get_lights">[docs]</a>    <span class="k">def</span> <span class="nf">get_lights</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Fetch a list of all lights known to the bridge.</span>
 
 <span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
 <span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
-<span class="sd">        :rtype: dict</span>
-<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
-<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        :rtype: `dict`</span>
+<span class="sd">        :raises: `tornado.httpclient.HTTPError` if the HTTP request failed.</span>
+<span class="sd">                 `HueAPIException` if the Hue API returned an error.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;GET&quot;</span><span class="p">,</span> <span class="s">&quot;/lights&quot;</span><span class="p">)</span>
 </div>
@@ -478,22 +518,137 @@
 
 <span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
 <span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
-<span class="sd">        :rtype: dict</span>
-<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
-<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        :rtype: `dict`</span>
+<span class="sd">        :raises: `tornado.httpclient.HTTPError` if the HTTP request failed.</span>
+
+<span class="sd">                 `HueAPIException` if the Hue API returned an error.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;POST&quot;</span><span class="p">,</span> <span class="s">&quot;/lights&quot;</span><span class="p">)</span>
 </div>
 <div class="viewcode-block" id="Bridge.get_new_lights"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.get_new_lights">[docs]</a>    <span class="k">def</span> <span class="nf">get_new_lights</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Get a list of all lights found during the last light search.</span>
+        <span class="sd">&quot;&quot;&quot;Get a list of all lights found after running `search_lights`.</span>
 
 <span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
 <span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
-<span class="sd">        :rtype: dict</span>
-<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
-<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
+<span class="sd">        :rtype: `dict`</span>
+<span class="sd">        :raises: `tornado.httpclient.HTTPError` if the HTTP request failed.</span>
+<span class="sd">                 `HueAPIException` if the Hue API returned an error.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;GET&quot;</span><span class="p">,</span> <span class="s">&quot;/lights/new&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Bridge.get_bridge_info"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.get_bridge_info">[docs]</a>    <span class="k">def</span> <span class="nf">get_bridge_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; TODO TODO TODO</span>
+
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
+<span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
+<span class="sd">        :rtype: `dict`</span>
+<span class="sd">        :raises: `tornado.httpclient.HTTPError` if the HTTP request failed.</span>
+
+<span class="sd">                 `HueAPIException` if the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;GET&quot;</span><span class="p">,</span> <span class="s">&quot;/&quot;</span><span class="p">)</span>
+</div>
+    <span class="nd">@tornado.gen.coroutine</span>
+<div class="viewcode-block" id="Bridge.create_user"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.create_user">[docs]</a>    <span class="k">def</span> <span class="nf">create_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">devicetype</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create a new user for this bridge.</span>
+
+<span class="sd">        A valid user name is required to execute most commands. In order to create a new user,</span>
+<span class="sd">        the link button on the Hue bridge must be pressed before this command is executed.</span>
+
+<span class="sd">        `update_info` will be called automatically after setting the username.</span>
+
+<span class="sd">        :param str devicetype: The &#39;type&#39; of user. Should be related to the application</span>
+<span class="sd">                               for which this user is created.</span>
+<span class="sd">        :param str username: The new user name. If not supplied a random user name will</span>
+<span class="sd">                             be generated by the bridge.</span>
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the new username when complete.</span>
+<span class="sd">        :rtype: `str`</span>
+<span class="sd">        :raises: `tornado.httpclient.HTTPError` if the HTTP request failed.</span>
+
+<span class="sd">                 `NoLinkButtonPressedException` if the link button was not pressed.</span>
+
+<span class="sd">                 `HueAPIException` if the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;devicetype&#39;</span><span class="p">:</span> <span class="n">devicetype</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">username</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">body</span><span class="p">[</span><span class="s">&#39;username&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">username</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="s">&quot;POST&quot;</span><span class="p">,</span> <span class="s">&quot;/api&quot;</span><span class="p">,</span> <span class="n">body</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_username</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s">&#39;success&#39;</span><span class="p">][</span><span class="s">&#39;username&#39;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span>
+</div>
+<div class="viewcode-block" id="Bridge.set_username"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.set_username">[docs]</a>    <span class="k">def</span> <span class="nf">set_username</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">username</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the user name for this bridge.</span>
+
+<span class="sd">        A valid user name is required to execute most commands.</span>
+
+<span class="sd">        `update_info` will be automatically after setting the username.</span>
+
+<span class="sd">        :param str username: The new user name.</span>
+<span class="sd">        :return: A `tornado.concurrent.Future` that completes when `update_info` has finished</span>
+<span class="sd">                 updating the metadata.</span>
+<span class="sd">        :raises: `tornado.httpclient.HTTPError` if the HTTP request failed.</span>
+
+<span class="sd">                 `HueAPIException` if the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">username</span> <span class="o">=</span> <span class="n">username</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_info</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Bridge.set_defaults"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.set_defaults">[docs]</a>    <span class="k">def</span> <span class="nf">set_defaults</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">defaults</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the default state changes to be included with any calls to state-changing operations.</span>
+
+<span class="sd">        These changes are included whenever the state is set, unless overridden</span>
+<span class="sd">        by the provided state change argument.</span>
+
+<span class="sd">        :param dict defaults: The new default state changes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defaults</span> <span class="o">=</span> <span class="n">defaults</span>
+</div>
+    <span class="nd">@tornado.gen.coroutine</span>
+<div class="viewcode-block" id="Bridge.update_info"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.update_info">[docs]</a>    <span class="k">def</span> <span class="nf">update_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Update the Hue bridge metadata.</span>
+
+<span class="sd">        If the current `username` is valid, `logged_in` will be set to `True` and</span>
+<span class="sd">        `gateway`, `netmask`, `name` and `mac` will be updated; otherwise, `logged_in`</span>
+<span class="sd">        will be set to `False` and the remaining attributes to `None`.</span>
+
+<span class="sd">        This method is called automatically by `create_user` and `set_username`.</span>
+
+<span class="sd">        :return: A `tornado.concurrent.Future` that completes when the update attempt completes.</span>
+<span class="sd">        :raises: `tornado.httpclient.HTTPError` if the HTTP request failed.</span>
+
+<span class="sd">                 `HueAPIException` if the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;GET&quot;</span><span class="p">,</span> <span class="s">&quot;/&quot;</span><span class="p">)</span>
+            <span class="n">info</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;config&quot;</span><span class="p">]</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">logged_in</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gateway</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s">&#39;gateway&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">netmask</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s">&#39;netmask&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mac</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s">&#39;mac&#39;</span><span class="p">]</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">light_data</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">lamp_num</span><span class="p">,</span> <span class="n">lamp</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;lights&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">state</span> <span class="o">=</span> <span class="n">lamp</span><span class="p">[</span><span class="s">&quot;state&quot;</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">state</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ignoredkeys</span><span class="p">:</span>
+                        <span class="k">continue</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">light_data</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">lamp_num</span><span class="p">)][</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+            <span class="k">for</span> <span class="n">group_num</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;groups&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">lights</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="s">&quot;lights&quot;</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">group_num</span><span class="p">)]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">lights</span><span class="p">]</span>
+        <span class="k">except</span> <span class="n">UnauthorizedUserException</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&quot;Couldn&#39;t send request to </span><span class="si">%s</span><span class="s"> using username </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">serial_number</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logged_in</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gateway</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">netmask</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mac</span> <span class="o">=</span> <span class="bp">None</span>
 </div>
     <span class="nd">@tornado.gen.coroutine</span>
 <div class="viewcode-block" id="Bridge.reset_nearby_bulb"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.reset_nearby_bulb">[docs]</a>    <span class="k">def</span> <span class="nf">reset_nearby_bulb</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -504,7 +659,7 @@
 
 <span class="sd">        :return: A `tornado.concurrent.Future` that completes when a bulb has been successfully</span>
 <span class="sd">                 reset, or when the reset attempt has failed.</span>
-<span class="sd">        :raises BulbNotResetException: If no bulb was reset.</span>
+<span class="sd">        :raises: `BulbNotResetException` if no bulb was reset.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">sock</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">()</span>
         <span class="n">stream</span> <span class="o">=</span> <span class="n">tornado</span><span class="o">.</span><span class="n">iostream</span><span class="o">.</span><span class="n">IOStream</span><span class="p">(</span><span class="n">sock</span><span class="p">)</span>
@@ -542,155 +697,31 @@
         <span class="k">finally</span><span class="p">:</span>
             <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Closing stream used for bulb reset&quot;</span><span class="p">)</span>
             <span class="n">stream</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-</div>
-<div class="viewcode-block" id="Bridge.get_bridge_info"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.get_bridge_info">[docs]</a>    <span class="k">def</span> <span class="nf">get_bridge_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;TODO</span>
-
-<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
-<span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
-<span class="sd">        :rtype: dict</span>
-<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
-<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;GET&quot;</span><span class="p">,</span> <span class="s">&quot;/&quot;</span><span class="p">)</span>
-</div>
-<div class="viewcode-block" id="Bridge.set_username"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.set_username">[docs]</a>    <span class="k">def</span> <span class="nf">set_username</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">username</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Set the user name for this bridge.</span>
-
-<span class="sd">        A valid user name is required to execute most commands.</span>
-
-<span class="sd">        `update_info` will be run after setting the username in order to validate the username.</span>
-
-<span class="sd">        :param str username: The new user name.</span>
-<span class="sd">        :return: A `tornado.concurrent.Future` that completes when `update_info` has finished</span>
-<span class="sd">                 updating the metadata.</span>
-<span class="sd">        :raises NoLinkButtonPressedException: If the link button was not pressed.</span>
-<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">username</span> <span class="o">=</span> <span class="n">username</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_info</span><span class="p">()</span>
-</div>
-    <span class="nd">@tornado.gen.coroutine</span>
-<div class="viewcode-block" id="Bridge.create_user"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.create_user">[docs]</a>    <span class="k">def</span> <span class="nf">create_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">devicetype</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Create a new user for this bridge.</span>
-
-<span class="sd">        A valid user name is required to execute most commands. In order to create a new user,</span>
-<span class="sd">        the link button on the Hue bridge must pressed before this command is executed.</span>
-
-<span class="sd">        :param str devicetype: The &#39;type&#39; of user. Should be related to the application</span>
-<span class="sd">                               for which this user is created.</span>
-<span class="sd">        :param str username: The new user name. If not supplied a random user name will</span>
-<span class="sd">                             be generated by the bridge.</span>
-<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the new username when complete.</span>
-<span class="sd">        :rtype: str</span>
-<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
-<span class="sd">        :raises NoLinkButtonPressedException: If the link button was not pressed.</span>
-<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">body</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;devicetype&#39;</span><span class="p">:</span> <span class="n">devicetype</span><span class="p">}</span>
-        <span class="k">if</span> <span class="n">username</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="n">body</span><span class="p">[</span><span class="s">&#39;username&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">username</span>
-        <span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_raw</span><span class="p">(</span><span class="s">&quot;POST&quot;</span><span class="p">,</span> <span class="s">&quot;/api&quot;</span><span class="p">,</span> <span class="n">body</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_username</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s">&#39;success&#39;</span><span class="p">][</span><span class="s">&#39;username&#39;</span><span class="p">])</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span>
-</div>
-    <span class="nd">@tornado.gen.coroutine</span>
-<div class="viewcode-block" id="Bridge.create_group"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.create_group">[docs]</a>    <span class="k">def</span> <span class="nf">create_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lights</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Create a new group for this bridge.</span>
-
-<span class="sd">        :param list lights: a list of lamp IDs (`int`).</span>
-<span class="sd">        :param str name: Name for this group, optional argument.</span>
-<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
-<span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
-<span class="sd">        :rtype: dict</span>
-<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
-<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">body</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;lights&#39;</span><span class="p">:[</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">lights</span><span class="p">]}</span>
-        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="n">body</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
-        <span class="n">res</span> <span class="o">=</span> <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;POST&quot;</span><span class="p">,</span> <span class="s">&quot;/groups&quot;</span><span class="p">,</span> <span class="n">body</span><span class="p">)</span>
-        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">r&quot;/groups/(\d+)&quot;</span><span class="p">,</span> <span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&quot;success&quot;</span><span class="p">][</span><span class="s">&quot;id&quot;</span><span class="p">])</span>
-        <span class="n">group</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">group</span><span class="p">]</span> <span class="o">=</span> <span class="n">lights</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="k">return</span> <span class="n">res</span>
-</div>
-    <span class="nd">@tornado.gen.coroutine</span>
-<div class="viewcode-block" id="Bridge.delete_group"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.delete_group">[docs]</a>    <span class="k">def</span> <span class="nf">delete_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Delete a new group from this bridge.</span>
-
-<span class="sd">        :param int i: ID number for the group to be removed.</span>
-<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the response from the bridge,</span>
-<span class="sd">                 converted from JSON to a Python dictionary, when complete.</span>
-<span class="sd">        :rtype: dict</span>
-<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
-<span class="sd">        :raises HueAPIException: If the Hue API returned an error.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;DELETE&quot;</span><span class="p">,</span> <span class="s">&quot;/groups/{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)))[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-        <span class="k">return</span> <span class="n">res</span>
-</div>
-    <span class="nd">@tornado.gen.coroutine</span>
-<div class="viewcode-block" id="Bridge.update_info"><a class="viewcode-back" href="../playhouse.html#playhouse.Bridge.update_info">[docs]</a>    <span class="k">def</span> <span class="nf">update_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Update the Hue bridge metadata.</span>
-
-<span class="sd">        If the current `username` is valid, `logged_in` will be set to `True` and</span>
-<span class="sd">        `gateway`, `netmask`, `name` and `mac` will be updated; otherwise, `logged_in`</span>
-<span class="sd">        will be set to `False` and the remaining attributes to `None`.</span>
-
-<span class="sd">        :return: A `tornado.concurrent.Future` that completes when the update attempt completes.</span>
-<span class="sd">        :raises tornado.httpclient.HTTPError: If the HTTP request failed.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">data</span> <span class="o">=</span> <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request</span><span class="p">(</span><span class="s">&quot;GET&quot;</span><span class="p">,</span> <span class="s">&quot;/&quot;</span><span class="p">)</span>
-            <span class="n">info</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;config&quot;</span><span class="p">]</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">logged_in</span> <span class="o">=</span> <span class="bp">True</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">gateway</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s">&#39;gateway&#39;</span><span class="p">]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">netmask</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s">&#39;netmask&#39;</span><span class="p">]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">mac</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s">&#39;mac&#39;</span><span class="p">]</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">light_data</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-            <span class="k">for</span> <span class="n">lamp_num</span><span class="p">,</span> <span class="n">lamp</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;lights&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="n">state</span> <span class="o">=</span> <span class="n">lamp</span><span class="p">[</span><span class="s">&quot;state&quot;</span><span class="p">]</span>
-                <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">state</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                    <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ignoredkeys</span><span class="p">:</span>
-                        <span class="k">continue</span>
-
-                    <span class="bp">self</span><span class="o">.</span><span class="n">light_data</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">lamp_num</span><span class="p">)][</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
-            <span class="k">for</span> <span class="n">group_num</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s">&quot;groups&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="n">lights</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="s">&quot;lights&quot;</span><span class="p">]</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">group_num</span><span class="p">)]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">lights</span><span class="p">]</span>
-        <span class="k">except</span> <span class="n">UnauthorizedUserException</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&quot;Couldn&#39;t send request to </span><span class="si">%s</span><span class="s"> using username </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span>
-                                <span class="bp">self</span><span class="o">.</span><span class="n">serial_number</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">logged_in</span> <span class="o">=</span> <span class="bp">False</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">gateway</span> <span class="o">=</span> <span class="bp">None</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">netmask</span> <span class="o">=</span> <span class="bp">None</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="bp">None</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">mac</span> <span class="o">=</span> <span class="bp">None</span>
 
 </div></div>
 <div class="viewcode-block" id="LightGrid"><a class="viewcode-back" href="../playhouse.html#playhouse.LightGrid">[docs]</a><span class="k">class</span> <span class="nc">LightGrid</span><span class="p">:</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">usernames</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">grid</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">buffered</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">defaults</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+    <span class="sd">&quot;&quot;&quot;Keeps track of several bridges, abstracting access to individual lights.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="LightGrid.__init__"><a class="viewcode-back" href="../playhouse.html#playhouse.LightGrid.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">usernames</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">grid</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">buffered</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">defaults</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
                  <span class="n">assert_reachable</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Create a new light grid-</span>
+        <span class="sd">&quot;&quot;&quot;Initializes the `LightGrid`.</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            username: Map of serial number -&gt; username pairs</span>
-<span class="sd">            grid: A list of lists of (mac address, light) tuples, specifying</span>
-<span class="sd">                a light belonging to a bridge with the given mac address.</span>
-<span class="sd">                Maps (x,y) coordinates to the light specified at grid[y][x].</span>
-<span class="sd">            buffered: If True, calls to set_state will not prompt an immediate</span>
-<span class="sd">                request to the bridge in question; to send the buffered state</span>
-<span class="sd">                changes, run commit.</span>
-<span class="sd">            defaults: Additional instructions to include in each state change</span>
-<span class="sd">                request to a bridge.</span>
-<span class="sd">            assert_reachable: If true, the grid will occasionally check that all</span>
-<span class="sd">                bridges are reachable; any unreachable bridge will be removed.</span>
+<span class="sd">        :param dict usernames: Dictionary of MAC address -&gt; username pairs. When a bridge is</span>
+<span class="sd">                               added without specifying a username, and the bridge&#39;s MAC address</span>
+<span class="sd">                               is present in the ``usernames`` dictionary, the username of the</span>
+<span class="sd">                               bridge will automatically be set to the corresponding value</span>
+<span class="sd">                               in the dictionary.</span>
+<span class="sd">        :param list grid: A list of lists of ``(mac_address, light_id)`` tuples, specifying</span>
+<span class="sd">                          a light belonging to a bridge with the given mac address.</span>
+<span class="sd">                          Maps ``(x, y)`` coordinates to the light specified at ``grid[y][x]``.</span>
+<span class="sd">        :param bool buffered: If `True`, calls to `set_state` will not prompt an immediate</span>
+<span class="sd">                              request to the bridge in question; to send the buffered state</span>
+<span class="sd">                              changes, call `commit`.</span>
+<span class="sd">        :param dict defaults: Additional instructions to include in each state change</span>
+<span class="sd">                              request to a bridge.</span>
+<span class="sd">        :param bool assert_reachable: If `True`, the grid will occasionally check that all</span>
+<span class="sd">                                      bridges are reachable; any unreachable bridge will be removed.</span>
+<span class="sd">                                      Setting this parameter to `True` is equivalent to manually</span>
+<span class="sd">                                      calling the `assert_reachable` method.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">defaults</span> <span class="o">=</span> <span class="n">defaults</span> <span class="k">if</span> <span class="n">defaults</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">bridges</span> <span class="o">=</span> <span class="p">{}</span>
@@ -708,17 +739,26 @@
 
         <span class="k">if</span> <span class="n">assert_reachable</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">assert_reachable</span><span class="p">()</span>
-
+</div>
     <span class="nd">@tornado.gen.coroutine</span>
 <div class="viewcode-block" id="LightGrid.add_bridge"><a class="viewcode-back" href="../playhouse.html#playhouse.LightGrid.add_bridge">[docs]</a>    <span class="k">def</span> <span class="nf">add_bridge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ip_address_or_bridge</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Add a new bridge to this light grid</span>
+        <span class="sd">&quot;&quot;&quot;Add a new bridge to this light grid.</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            ip_address_or_bridge: Can be either a Bridge object, or an IP address to the bridge, in which case a new Bridge object will be created.</span>
-<span class="sd">            username: User name for this bridge. User names are required to perform most bridge commands.</span>
+<span class="sd">        :param ip_address_or_bridge: Can be either a `Bridge` object, or an IP address to a bridge,</span>
+<span class="sd">                                     in which case a new `Bridge` object will be created from</span>
+<span class="sd">                                     the IP address.</span>
+<span class="sd">        :param str username: User name for this bridge. User names are required</span>
+<span class="sd">                             to perform most bridge commands. Ignored if ``ip_address_or_bridge``</span>
+<span class="sd">                             is a `Bridge` instance.</span>
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to the `Bridge` instance added to</span>
+<span class="sd">                 the `LightGrid` when complete.</span>
+<span class="sd">        :rtype: `Bridge`</span>
+<span class="sd">        :raises: `NoBridgeFoundException` if no bridge was found at the given IP address.</span>
+
+<span class="sd">                 `BridgeAlreadyAddedException` if the `Bridge` is already present</span>
+<span class="sd">                 in the `LightGrid`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c"># can take an already instantiated bridge instance</span>
-        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">ip_address_or_bridge</span><span class="p">)</span> <span class="ow">is</span> <span class="n">Bridge</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ip_address_or_bridge</span><span class="p">,</span> <span class="n">Bridge</span><span class="p">):</span>
             <span class="n">bridge</span> <span class="o">=</span> <span class="n">ip_address_or_bridge</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">bridge</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">Bridge</span><span class="p">(</span><span class="n">ip_address_or_bridge</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">defaults</span><span class="p">)</span>
@@ -732,13 +772,17 @@
         <span class="k">return</span> <span class="n">bridge</span>
 </div>
 <div class="viewcode-block" id="LightGrid.has_bridge"><a class="viewcode-back" href="../playhouse.html#playhouse.LightGrid.has_bridge">[docs]</a>    <span class="k">def</span> <span class="nf">has_bridge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mac_or_bridge</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Check if this light grid has a particular bridge stored in its configuration.</span>
+        <span class="sd">&quot;&quot;&quot;Check whether this `LightGrid` has a bridge with the given MAC address</span>
+<span class="sd">        stored in its configuration.</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            mac_or_bridge: Either a MAC addressed for the requested bridge, or a Bridge object, in which case this method will search for a bridge with the same MAC address as the provided Bridge object.</span>
+<span class="sd">        If a `Bridge` instance is given, compares `Bridge.serial_number` of</span>
+<span class="sd">        the provided instance to the known bridges.</span>
+
+<span class="sd">        :param mac_or_bridge: Either a MAC address or a `Bridge` object.</span>
+<span class="sd">        :returns: `True` if a `Bridge` instance with the given MAC address is present</span>
+<span class="sd">                  in the `LightGrid`; `False` otherwise.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">mac_or_bridge</span><span class="p">)</span> <span class="ow">is</span> <span class="n">Bridge</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mac_or_bridge</span><span class="p">,</span> <span class="n">Bridge</span><span class="p">):</span>
             <span class="n">mac</span> <span class="o">=</span> <span class="n">mac_or_bridge</span><span class="o">.</span><span class="n">serial_number</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">mac</span> <span class="o">=</span> <span class="n">mac_or_bridge</span>
@@ -746,31 +790,39 @@
         <span class="k">return</span> <span class="n">mac</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">bridges</span>
 </div>
 <div class="viewcode-block" id="LightGrid.set_usernames"><a class="viewcode-back" href="../playhouse.html#playhouse.LightGrid.set_usernames">[docs]</a>    <span class="k">def</span> <span class="nf">set_usernames</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">usernames</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Sets the user name map for this light grid.</span>
+        <span class="sd">&quot;&quot;&quot;Sets the username map for this light grid.</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            username: Map of serial number -&gt; username pairs</span>
+<span class="sd">        :param dict usernames: Dictionary of MAC address -&gt; username pairs. See the ``usernames``</span>
+<span class="sd">                               parameter of `__init__`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">usernames</span> <span class="o">=</span> <span class="n">usernames</span>
 </div>
-    <span class="k">def</span> <span class="nf">set_grid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grid</span><span class="p">):</span>
+<div class="viewcode-block" id="LightGrid.set_grid"><a class="viewcode-back" href="../playhouse.html#playhouse.LightGrid.set_grid">[docs]</a>    <span class="k">def</span> <span class="nf">set_grid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grid</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the grid that maps coordinates to ``(mac_address, light_id)`` pairs.</span>
+
+<span class="sd">        :param list grid: A list of lists of ``(mac_address, light_id)`` tuples. See the ``grid``</span>
+<span class="sd">                          parameter of `__init__`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">grid</span> <span class="o">=</span> <span class="n">grid</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
-
+</div>
     <span class="nd">@tornado.gen.coroutine</span>
 <div class="viewcode-block" id="LightGrid.set_state"><a class="viewcode-back" href="../playhouse.html#playhouse.LightGrid.set_state">[docs]</a>    <span class="k">def</span> <span class="nf">set_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="n">args</span><span class="p">):</span>
         <span class="c"># pylint: disable=invalid-name</span>
-        <span class="sd">&quot;&quot;&quot;Set the state for a specific lamp.</span>
+        <span class="sd">&quot;&quot;&quot;Set the state for the light at the given coordinate.</span>
 
-<span class="sd">        If this grid is buffered, the state will not be sent to the lamp immediately; run</span>
-<span class="sd">        commit to send the buffered state changes.</span>
+<span class="sd">        If this grid is buffered, the state will not be sent to the lamp immediately; call</span>
+<span class="sd">        `commit` to send the buffered state changes. See :exc:`HueAPIException`.</span>
 
-<span class="sd">        Args:</span>
-<span class="sd">            x: X coordinate</span>
-<span class="sd">            y: Y coordinate</span>
-<span class="sd">            args: State argument, see Philips Hue documentation</span>
+<span class="sd">        :param int x: X coordinate.</span>
+<span class="sd">        :param int y: Y coordinate.</span>
+<span class="sd">        :param args: State argument, see the Philips Hue documentation.</span>
+<span class="sd">        :return: A `tornado.concurrent.Future` that completes when `set_state` has finished.</span>
+<span class="sd">        :raises: `tornado.httpclient.HTTPError` if the grid is unbuffered and</span>
+<span class="sd">                 the HTTP request failed.</span>
+
+<span class="sd">                 `HueAPIException` if the grid is unbuffered and the Hue API returned an error.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span><span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
@@ -782,15 +834,31 @@
                 <span class="k">raise</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">exceptions</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
 </div>
     <span class="nd">@tornado.gen.coroutine</span>
-    <span class="k">def</span> <span class="nf">set_all</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">args</span><span class="p">):</span>
+<div class="viewcode-block" id="LightGrid.set_all"><a class="viewcode-back" href="../playhouse.html#playhouse.LightGrid.set_all">[docs]</a>    <span class="k">def</span> <span class="nf">set_all</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the state of every light known to every bridge added to this `LightGrid`.</span>
+
+<span class="sd">        :param args: State argument, see the Philips Hue documentation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">_</span><span class="p">,</span> <span class="n">exc</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">ExceptionCatcher</span><span class="p">({</span><span class="n">bridge</span><span class="o">.</span><span class="n">serial_number</span><span class="p">:</span> <span class="n">bridge</span><span class="o">.</span><span class="n">set_group</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">args</span><span class="p">)</span>
                                            <span class="k">for</span> <span class="n">bridge</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">bridges</span><span class="o">.</span><span class="n">values</span><span class="p">()})</span>
         <span class="k">return</span> <span class="n">exc</span>
 
-
+</div>
     <span class="nd">@tornado.gen.coroutine</span>
 <div class="viewcode-block" id="LightGrid.commit"><a class="viewcode-back" href="../playhouse.html#playhouse.LightGrid.commit">[docs]</a>    <span class="k">def</span> <span class="nf">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Commit saved state changes to the lamps&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;Commit buffered state changes to the lamps.</span>
+
+<span class="sd">        This method is automatically called whenever `set_state` is called if the ``buffered``</span>
+<span class="sd">        parameter of `__init__` was set to `False`.</span>
+
+<span class="sd">        :return: A `tornado.concurrent.Future` that resolves to a dictionary consisting of</span>
+<span class="sd">                 ``(x, y)`` coordinate -&gt; exception object key/value pairs, where a given</span>
+<span class="sd">                 exception object is associated with the operation of changing the state</span>
+<span class="sd">                 of the light at the corresponding coordinate.</span>
+<span class="sd">        :rtype: `dict`</span>
+<span class="sd">        :raises: `tornado.httpclient.HTTPError` if the HTTP request failed.</span>
+<span class="sd">                 `HueAPIException` if the Hue API returned an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">futures</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">exceptions</span> <span class="o">=</span> <span class="p">{}</span>
@@ -817,7 +885,16 @@
         <span class="k">return</span> <span class="n">exceptions</span>
 </div>
     <span class="nd">@tornado.gen.coroutine</span>
-    <span class="k">def</span> <span class="nf">assert_reachable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="LightGrid.assert_reachable"><a class="viewcode-back" href="../playhouse.html#playhouse.LightGrid.assert_reachable">[docs]</a>    <span class="k">def</span> <span class="nf">assert_reachable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Coroutine that runs indefinitely, periodically ensuring that all bridges are reachable.</span>
+
+<span class="sd">        If a bridge cannot be reached three times in a row, it is removed from the `LightGrid`.</span>
+<span class="sd">        Upon removing a bridge, `discover` will be run once as a last-ditch effort to find</span>
+<span class="sd">        the lost bridge.</span>
+
+<span class="sd">        This method is automatically called if the ``assert_reachable`` parameter of `__init__`</span>
+<span class="sd">        was set to `True`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">strikes</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
 
         <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">running</span><span class="p">:</span>
@@ -838,8 +915,8 @@
                     <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">,</span>
                             <span class="ne">UnicodeError</span><span class="p">,</span> <span class="n">tornado</span><span class="o">.</span><span class="n">httpclient</span><span class="o">.</span><span class="n">HTTPError</span><span class="p">):</span>
                         <span class="n">strikes</span><span class="p">[</span><span class="n">bridge</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
-                        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&quot;Couldn&#39;t reach bridge at </span><span class="si">%s</span><span class="s">; strikes: </span><span class="si">%s</span><span class="s">/3&quot;</span><span class="p">,</span>
-                                      <span class="n">bridge</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">,</span> <span class="n">strikes</span><span class="p">[</span><span class="n">bridge</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">])</span>
+                        <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&quot;Couldn&#39;t reach bridge at </span><span class="si">%s</span><span class="s">; strikes: </span><span class="si">%s</span><span class="s">/3&quot;</span><span class="p">,</span>
+                                        <span class="n">bridge</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">,</span> <span class="n">strikes</span><span class="p">[</span><span class="n">bridge</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">])</span>
 
                         <span class="k">if</span> <span class="n">strikes</span><span class="p">[</span><span class="n">bridge</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
                             <span class="n">macs_to_remove</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">mac</span><span class="p">)</span>
@@ -864,7 +941,7 @@
             <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                 <span class="n">logging</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s">&quot;Encountered exception while pinging bridges&quot;</span><span class="p">)</span>
 
-</div>
+</div></div>
 <span class="k">class</span> <span class="nc">AsyncSocket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
@@ -908,6 +985,19 @@
 
 <span class="nd">@tornado.gen.coroutine</span>
 <div class="viewcode-block" id="discover"><a class="viewcode-back" href="../playhouse.html#playhouse.discover">[docs]</a><span class="k">def</span> <span class="nf">discover</span><span class="p">(</span><span class="n">attempts</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Search for bridges on the local network.</span>
+
+<span class="sd">    Uses UPnP discovery to query the network for bridges. Additionally a request is sent to</span>
+<span class="sd">    `Philips&#39; NUPnP API &lt;http://www.meethue.com/api/nupnp&gt;`_, which lists all bridges with the</span>
+<span class="sd">    same external IP address as the client issuing the request.</span>
+
+<span class="sd">    :param int attempts: Number of times to run the UPnP discovery.</span>
+<span class="sd">    :param int timeout: Time in seconds to wait for a new response during a UPnP discovery</span>
+<span class="sd">                        attempt before giving up.</span>
+<span class="sd">    :return: A `tornado.concurrent.Future` that resolves to a list of `Bridge` instances</span>
+<span class="sd">             when complete.</span>
+<span class="sd">    :rtype: `list`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">s</span> <span class="o">=</span> <span class="n">AsyncSocket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_DGRAM</span><span class="p">)</span>
     <span class="n">s</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">SOL_SOCKET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SO_REUSEADDR</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
     <span class="n">s</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">IPPROTO_IP</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">IP_MULTICAST_TTL</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
