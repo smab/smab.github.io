@@ -26,7 +26,7 @@
     <link rel="top" title="Playhouse 0.1 documentation" href="index.html" />
     <link rel="up" title="Light server" href="backend.html" />
     <link rel="next" title="Web server" href="frontend.html" />
-    <link rel="prev" title="lightserver — Server exposing a REST-inspired API for controlling Philips Hue bridges" href="lightserver.html" /> 
+    <link rel="prev" title="lightserver — Server exposing an HTTP API for controlling several Philips Hue bridges" href="lightserver.html" /> 
   </head>
   <body>
     <div class="related">
@@ -39,10 +39,13 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
+          <a href="http-routingtable.html" title="HTTP Routing Table"
+             >routing table</a> |</li>
+        <li class="right" >
           <a href="frontend.html" title="Web server"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="lightserver.html" title="lightserver — Server exposing a REST-inspired API for controlling Philips Hue bridges"
+          <a href="lightserver.html" title="lightserver — Server exposing an HTTP API for controlling several Philips Hue bridges"
              accesskey="P">previous</a> |</li>
         <li><a href="index.html">Playhouse 0.1 documentation</a> &raquo;</li>
           <li><a href="backend.html" accesskey="U">Light server</a> &raquo;</li> 
@@ -56,6 +59,9 @@
             
   <div class="section" id="module-resetutil">
 <span id="resetutil-utility-for-resetting-philips-hue-bulbs-and-pairing-them-with-bridges"></span><h1><a class="reference internal" href="#module-resetutil" title="resetutil"><tt class="xref py py-mod docutils literal"><span class="pre">resetutil</span></tt></a> &#8212; Utility for resetting Philips Hue bulbs and pairing them with bridges<a class="headerlink" href="#module-resetutil" title="Permalink to this headline">¶</a></h1>
+<p>Resetutil is a simple utility for pairing Philips hue bulbs to bridges. It is a command-line utility. It is run simply by executing &#8220;python resetutil.py&#8221;</p>
+<p>The program will first attempt to list all available bridges in the network. It will then list all the options and allow you to pick a bridge or write a IP address if the bridge you want to connect to is not in the list.</p>
+<p>Once a bridge has been selected, the program will enter a loop where you can reset as many lamps as you want. To reset a lamp, plug it in within 30 centimeters from the bridge, make sure that no other nearby lamps are plugged in and type &#8220;reset&#8221;. When you are done with all lamps, type &#8220;done&#8221;.</p>
 </div>
 
 
@@ -66,7 +72,7 @@
         <div class="sphinxsidebarwrapper">
   <h4>Previous topic</h4>
   <p class="topless"><a href="lightserver.html"
-                        title="previous chapter"><tt class="docutils literal"><span class="pre">lightserver</span></tt> &#8212; Server exposing a REST-inspired API for controlling Philips Hue bridges</a></p>
+                        title="previous chapter"><tt class="docutils literal"><span class="pre">lightserver</span></tt> &#8212; Server exposing an HTTP API for controlling several Philips Hue bridges</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="frontend.html"
                         title="next chapter">Web server</a></p>
@@ -102,10 +108,13 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
+          <a href="http-routingtable.html" title="HTTP Routing Table"
+             >routing table</a> |</li>
+        <li class="right" >
           <a href="frontend.html" title="Web server"
              >next</a> |</li>
         <li class="right" >
-          <a href="lightserver.html" title="lightserver — Server exposing a REST-inspired API for controlling Philips Hue bridges"
+          <a href="lightserver.html" title="lightserver — Server exposing an HTTP API for controlling several Philips Hue bridges"
              >previous</a> |</li>
         <li><a href="index.html">Playhouse 0.1 documentation</a> &raquo;</li>
           <li><a href="backend.html" >Light server</a> &raquo;</li> 

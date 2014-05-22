@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>lightserver — Server exposing a REST-inspired API for controlling Philips Hue bridges &mdash; Playhouse 0.1 documentation</title>
+    <title>lightserver — Server exposing an HTTP API for controlling several Philips Hue bridges &mdash; Playhouse 0.1 documentation</title>
     
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -39,6 +39,9 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
+          <a href="http-routingtable.html" title="HTTP Routing Table"
+             >routing table</a> |</li>
+        <li class="right" >
           <a href="resetutil.html" title="resetutil — Utility for resetting Philips Hue bulbs and pairing them with bridges"
              accesskey="N">next</a> |</li>
         <li class="right" >
@@ -54,8 +57,988 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="module-lightserver">
-<span id="lightserver-server-exposing-a-rest-inspired-api-for-controlling-philips-hue-bridges"></span><h1><a class="reference internal" href="#module-lightserver" title="lightserver"><tt class="xref py py-mod docutils literal"><span class="pre">lightserver</span></tt></a> &#8212; Server exposing a REST-inspired API for controlling Philips Hue bridges<a class="headerlink" href="#module-lightserver" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="lightserver-server-exposing-an-http-api-for-controlling-several-philips-hue-bridges">
+<h1><a class="reference internal" href="#module-lightserver" title="lightserver"><tt class="xref py py-mod docutils literal"><span class="pre">lightserver</span></tt></a> &#8212; Server exposing an HTTP API for controlling several Philips Hue bridges<a class="headerlink" href="#lightserver-server-exposing-an-http-api-for-controlling-several-philips-hue-bridges" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-lightserver">
+<span id="the-api"></span><h2>The API<a class="headerlink" href="#module-lightserver" title="Permalink to this headline">¶</a></h2>
+<p>This is a REST-inspired API that simplifies communication with Philips Hue bridges.</p>
+<p>The API abstracts access to individual bridges by placing each light associated with a bridge
+into a virtual grid, after which lights can be addressed by specifying the <tt class="docutils literal"><span class="pre">(x,</span> <span class="pre">y)</span></tt> coordinate
+of the light in the grid, without having to take into account which bridge the light belongs to.</p>
+<p>A number of API methods expect the request body to contain well-formed JSON conforming to
+a certain format which differs between methods. This format is specified using JSON Schema; see
+<a class="reference external" href="http://json-schema.org/">the official website</a> for more information and
+<a class="reference external" href="http://spacetelescope.github.io/understanding-json-schema/">Understanding JSON Schema</a> for
+a friendlier introduction.</p>
+<div class="section" id="responses">
+<h3>Responses<a class="headerlink" href="#responses" title="Permalink to this headline">¶</a></h3>
+<p>All responses from the API will be a well-formed JSON object containing at the very least
+a <tt class="docutils literal"><span class="pre">state</span></tt> property with either the string <tt class="docutils literal"><span class="pre">success</span></tt> or <tt class="docutils literal"><span class="pre">error</span></tt>. Unless otherwise specified,
+any successful responses will contain only <tt class="docutils literal"><span class="pre">{&quot;state&quot;:</span> <span class="pre">&quot;success&quot;}</span></tt>.</p>
+</div>
+<div class="section" id="failed-requests">
+<h3>Failed requests<a class="headerlink" href="#failed-requests" title="Permalink to this headline">¶</a></h3>
+<p>If a request fails, the response will contain an object with the poperty <tt class="docutils literal"><span class="pre">state</span></tt> set to the
+string <tt class="docutils literal"><span class="pre">error</span></tt>. Additionally the property <tt class="docutils literal"><span class="pre">errorcode</span></tt> will contain a short string identifying
+the error type, and the property <tt class="docutils literal"><span class="pre">errormessage</span></tt> a human-readable error message.</p>
+</div>
+<div class="section" id="authentication">
+<span id="id1"></span><h3>Authentication<a class="headerlink" href="#authentication" title="Permalink to this headline">¶</a></h3>
+<p>TODO</p>
+</div>
+<div class="section" id="api-methods">
+<h3>API methods<a class="headerlink" href="#api-methods" title="Permalink to this headline">¶</a></h3>
+<dl class="post">
+<dt id="post--lights">
+<tt class="descname">POST </tt><tt class="descname">/lights</tt><a class="headerlink" href="#post--lights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Change the state of the lights at the given coordinates.</p>
+<p><strong>Example request</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">[</span>
+    <span class="p">{</span>
+        <span class="nt">&quot;x&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="nt">&quot;y&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="nt">&quot;change&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;hue&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="nt">&quot;sat&quot;</span><span class="p">:</span> <span class="mi">255</span><span class="p">,</span>
+            <span class="nt">&quot;bri&quot;</span><span class="p">:</span> <span class="mi">100</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="nt">&quot;x&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="nt">&quot;y&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="nt">&quot;delay&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span>
+        <span class="nt">&quot;change&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;xy&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">],</span>
+            <span class="nt">&quot;transitiontime&quot;</span><span class="p">:</span> <span class="mi">10</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<p><strong>Expected JSON format</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;change&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="nt">&quot;alert&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;enum&quot;</span><span class="p">:</span> <span class="p">[</span>
+                            <span class="s2">&quot;none&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;select&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;lselect&quot;</span>
+                        <span class="p">]</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;bri&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">255</span><span class="p">,</span>
+                        <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;ct&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">500</span><span class="p">,</span>
+                        <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">153</span><span class="p">,</span>
+                        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;effect&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;enum&quot;</span><span class="p">:</span> <span class="p">[</span>
+                            <span class="s2">&quot;none&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;colorloop&quot;</span>
+                        <span class="p">]</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;hue&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">65535</span><span class="p">,</span>
+                        <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;on&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;rgb&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                            <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+                        <span class="p">},</span>
+                        <span class="nt">&quot;maxItems&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+                        <span class="nt">&quot;minItems&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+                        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;sat&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">255</span><span class="p">,</span>
+                        <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;transitiontime&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;xy&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                            <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+                        <span class="p">},</span>
+                        <span class="nt">&quot;maxItems&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+                        <span class="nt">&quot;minItems&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+                        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span>
+                    <span class="p">}</span>
+                <span class="p">},</span>
+                <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;delay&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;x&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;y&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="s2">&quot;x&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;y&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;change&quot;</span>
+        <span class="p">],</span>
+        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="post">
+<dt id="post--lights-all">
+<tt class="descname">POST </tt><tt class="descname">/lights/all</tt><a class="headerlink" href="#post--lights-all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set all lights known by all bridges added to the grid to the same state.</p>
+<p><strong>Example request</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span><span class="nt">&quot;on&quot;</span><span class="p">:</span> <span class="kc">false</span><span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Expected JSON format</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;alert&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;enum&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;none&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;select&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;lselect&quot;</span>
+            <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;bri&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">255</span><span class="p">,</span>
+            <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;ct&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">500</span><span class="p">,</span>
+            <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">153</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;effect&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;enum&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;none&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;colorloop&quot;</span>
+            <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;hue&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">65535</span><span class="p">,</span>
+            <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;on&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;rgb&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;maxItems&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+            <span class="nt">&quot;minItems&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;sat&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">255</span><span class="p">,</span>
+            <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;transitiontime&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;xy&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;maxItems&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="nt">&quot;minItems&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="get">
+<dt id="get--bridges">
+<tt class="descname">GET </tt><tt class="descname">/bridges</tt><a class="headerlink" href="#get--bridges" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve a list of all bridges added to the grid.</p>
+<p><em>The request body is ignored by this method.</em></p>
+<p><strong>Example response</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;success&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;bridges&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;cd3facebd076&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;ip&quot;</span><span class="p">:</span> <span class="s2">&quot;192.168.0.101&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="kc">null</span><span class="p">,</span>
+            <span class="nt">&quot;valid_username&quot;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+            <span class="nt">&quot;lights&quot;</span><span class="p">:</span> <span class="mi">-1</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;f827aef865ca&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;ip&quot;</span><span class="p">:</span> <span class="s2">&quot;192.168.0.104&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;my-username&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;valid_username&quot;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+            <span class="nt">&quot;lights&quot;</span><span class="p">:</span> <span class="mi">3</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Successful response format</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;state&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;enum&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;success&quot;</span>
+            <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;bridges&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Map of MAC address -&gt; bridge information key/value pairs.&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;patternProperties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;[0-9a-f]{12}&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;ip&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+                            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The IP address of the bridge.&quot;</span>
+                        <span class="p">},</span>
+                        <span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+                            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The username used with the bridge.&quot;</span>
+                        <span class="p">},</span>
+                        <span class="nt">&quot;valid_username&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span><span class="p">,</span>
+                            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Whether the username is valid for use with the bridge.&quot;</span>
+                        <span class="p">},</span>
+                        <span class="nt">&quot;lights&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">,</span>
+                            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Number of lights belonging to the bridge. -1 if valid_username is false.&quot;</span>
+                        <span class="p">}</span>
+                    <span class="p">}</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="post">
+<dt id="post--bridges-add">
+<tt class="descname">POST </tt><tt class="descname">/bridges/add</tt><a class="headerlink" href="#post--bridges-add" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a new bridge with the given IP address and username.</p>
+<p>A username is not required and may be either given as <tt class="docutils literal"><span class="pre">null</span></tt> or not supplied at all,
+though without one most actions involving the bridge will fail.</p>
+<p><strong>Example request</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;ip&quot;</span><span class="p">:</span> <span class="s2">&quot;192.168.0.104&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;my-username&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Expected JSON format</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;ip&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;anyOf&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;null&quot;</span>
+                <span class="p">}</span>
+            <span class="p">]</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;ip&quot;</span>
+    <span class="p">],</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Example response</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;success&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;bridges&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;f827aef865ca&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;ip&quot;</span><span class="p">:</span> <span class="s2">&quot;192.168.0.104&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;my-username&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;valid_username&quot;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+            <span class="nt">&quot;lights&quot;</span><span class="p">:</span> <span class="mi">3</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Successful response format</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;state&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;enum&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;success&quot;</span>
+            <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;bridges&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Map of MAC address -&gt; bridge information key/value pairs.&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;maxProperties&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="nt">&quot;patternProperties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;[0-9a-f]{12}&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;ip&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+                            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The IP address of the bridge.&quot;</span>
+                        <span class="p">},</span>
+                        <span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+                            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The username used with the bridge.&quot;</span>
+                        <span class="p">},</span>
+                        <span class="nt">&quot;valid_username&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span><span class="p">,</span>
+                            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Whether the username is valid for use with the bridge.&quot;</span>
+                        <span class="p">},</span>
+                        <span class="nt">&quot;lights&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">,</span>
+                            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Number of lights belonging to the bridge. -1 if valid_username is false.&quot;</span>
+                        <span class="p">}</span>
+                    <span class="p">}</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="get">
+<dt id="get--bridges-search">
+<tt class="descname">GET </tt><tt class="descname">/bridges/search</tt><a class="headerlink" href="#get--bridges-search" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve bridges found after running <a class="reference internal" href="#post--bridges-search" title="POST /bridges/search"><tt class="xref http http-post docutils literal"><span class="pre">POST</span> <span class="pre">/bridges/search</span></tt></a>.</p>
+<p><em>The request body is ignored by this method.</em></p>
+<p><strong>Example response</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;success&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;finished&quot;</span><span class="p">:</span> <span class="mi">1400776113</span><span class="p">,</span>
+    <span class="nt">&quot;bridges&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;0fb2a8549ec2&quot;</span><span class="p">:</span> <span class="s2">&quot;192.168.0.105&quot;</span><span class="p">,</span>
+        <span class="nt">&quot;92d0d3cdbc7f&quot;</span><span class="p">:</span> <span class="s2">&quot;192.168.0.109&quot;</span><span class="p">,</span>
+        <span class="nt">&quot;e2fa9cc7df08&quot;</span><span class="p">:</span> <span class="s2">&quot;192.168.0.103&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Successful response format</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;state&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;enum&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;success&quot;</span>
+            <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;finished&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;UNIX timestamp indicating when a search last finished. -1 if no search has been issued yet.&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;bridges&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;patternProperties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;[0-9a-f]{12}&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The IP address of the bridge.&quot;</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="post">
+<dt id="post--bridges-search">
+<tt class="descname">POST </tt><tt class="descname">/bridges/search</tt><a class="headerlink" href="#post--bridges-search" title="Permalink to this definition">¶</a></dt>
+<dd><p>Search for bridges on the local network.</p>
+<p>Returns immediately and runs the search asynchronously. To see when the search has
+finished and retrieve the new bridges, issue a request to
+<a class="reference internal" href="#get--bridges-search" title="GET /bridges/search"><tt class="xref http http-get docutils literal"><span class="pre">GET</span> <span class="pre">/bridges/search</span></tt></a> periodically.</p>
+<p><strong>Example request</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span><span class="nt">&quot;auto_add&quot;</span><span class="p">:</span> <span class="kc">true</span><span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Expected JSON format</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;auto_add&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;If true, new bridges are automatically added to the grid.&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;auto_add&quot;</span>
+    <span class="p">],</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="post">
+<dt id="post--bridges-(?P-mac-[0-9a-f]{12})">
+<tt class="descname">POST </tt><tt class="descname">/bridges/(?P&lt;mac&gt;[0-9a-f]{12})</tt><a class="headerlink" href="#post--bridges-(?P-mac-[0-9a-f]{12})" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the username to use for this bridge.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>mac</strong> &#8211; The MAC address of the bridge whose username to change.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example request</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span><span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;my-username&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Expected JSON format</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;anyOf&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;null&quot;</span>
+                <span class="p">}</span>
+            <span class="p">]</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;username&quot;</span>
+    <span class="p">],</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Example response</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span><span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;myusername&quot;</span><span class="p">,</span> <span class="nt">&quot;valid_username&quot;</span><span class="p">:</span> <span class="kc">true</span><span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Successful response format</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;state&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;enum&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;success&quot;</span>
+            <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;anyOf&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;null&quot;</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">],</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The new username.&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;valid_username&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Whether the username is valid for use with the bridge.&quot;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="delete">
+<dt id="delete--bridges-(?P-mac-[0-9a-f]{12})">
+<tt class="descname">DELETE </tt><tt class="descname">/bridges/(?P&lt;mac&gt;[0-9a-f]{12})</tt><a class="headerlink" href="#delete--bridges-(?P-mac-[0-9a-f]{12})" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove this bridge from the grid.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>mac</strong> &#8211; The MAC address of the bridge to remove.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><em>The request body is ignored by this method.</em></p>
+</dd></dl>
+
+<dl class="post">
+<dt id="post--bridges-(?P-mac-[0-9a-f]{12})-adduser">
+<tt class="descname">POST </tt><tt class="descname">/bridges/(?P&lt;mac&gt;[0-9a-f]{12})/adduser</tt><a class="headerlink" href="#post--bridges-(?P-mac-[0-9a-f]{12})-adduser" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new username for use with this bridge.</p>
+<p>If a username is not supplied, a new one will be generated by the bridge. The link button
+on the bridge must be pressed prior to issuing a request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>mac</strong> &#8211; The MAC address of the bridge for which to create the new username.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example request</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{}</span>
+</pre></div>
+</div>
+<p><strong>Expected JSON format</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Example response</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;success&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;f321c5d40b3a79eed6adc08eb3997a5e&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;valid_username&quot;</span><span class="p">:</span> <span class="kc">true</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Successful response format</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;state&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;enum&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;success&quot;</span>
+            <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The new username.&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;valid_username&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Whether the username is valid for use with the bridge (always true).&quot;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="post">
+<dt id="post--bridges-(?P-mac-[0-9a-f]{12})-lights">
+<tt class="descname">POST </tt><tt class="descname">/bridges/(?P&lt;mac&gt;[0-9a-f]{12})/lights</tt><a class="headerlink" href="#post--bridges-(?P-mac-[0-9a-f]{12})-lights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Change the state of the given lights known by this bridge.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>mac</strong> &#8211; The MAC address of the bridge that the lights whose state to change belong to.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example request</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">[</span>
+    <span class="p">{</span>
+        <span class="nt">&quot;light&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="nt">&quot;change&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;hue&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="nt">&quot;sat&quot;</span><span class="p">:</span> <span class="mi">255</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="nt">&quot;light&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="nt">&quot;change&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;hue&quot;</span><span class="p">:</span> <span class="mi">21845</span><span class="p">,</span>
+            <span class="nt">&quot;sat&quot;</span><span class="p">:</span> <span class="mi">255</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="nt">&quot;light&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="nt">&quot;change&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;hue&quot;</span><span class="p">:</span> <span class="mi">43690</span><span class="p">,</span>
+            <span class="nt">&quot;sat&quot;</span><span class="p">:</span> <span class="mi">255</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<p><strong>Expected JSON format</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;change&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="nt">&quot;alert&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;enum&quot;</span><span class="p">:</span> <span class="p">[</span>
+                            <span class="s2">&quot;none&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;select&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;lselect&quot;</span>
+                        <span class="p">]</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;bri&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">255</span><span class="p">,</span>
+                        <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;ct&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">500</span><span class="p">,</span>
+                        <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">153</span><span class="p">,</span>
+                        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;effect&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;enum&quot;</span><span class="p">:</span> <span class="p">[</span>
+                            <span class="s2">&quot;none&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;colorloop&quot;</span>
+                        <span class="p">]</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;hue&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">65535</span><span class="p">,</span>
+                        <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;on&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;rgb&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                            <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+                        <span class="p">},</span>
+                        <span class="nt">&quot;maxItems&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+                        <span class="nt">&quot;minItems&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+                        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;sat&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">255</span><span class="p">,</span>
+                        <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;transitiontime&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;xy&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                            <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+                        <span class="p">},</span>
+                        <span class="nt">&quot;maxItems&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+                        <span class="nt">&quot;minItems&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+                        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span>
+                    <span class="p">}</span>
+                <span class="p">},</span>
+                <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;light&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="s2">&quot;light&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;change&quot;</span>
+        <span class="p">],</span>
+        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="post">
+<dt id="post--bridges-(?P-mac-[0-9a-f]{12})-lights-all">
+<tt class="descname">POST </tt><tt class="descname">/bridges/(?P&lt;mac&gt;[0-9a-f]{12})/lights/all</tt><a class="headerlink" href="#post--bridges-(?P-mac-[0-9a-f]{12})-lights-all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Change the state of all lights known by this bridge.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>mac</strong> &#8211; The MAC address of the bridge that the lights whose state to change belong to.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example request</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span><span class="nt">&quot;alert&quot;</span><span class="p">:</span> <span class="s2">&quot;select&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Expected JSON format</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;alert&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;enum&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;none&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;select&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;lselect&quot;</span>
+            <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;bri&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">255</span><span class="p">,</span>
+            <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;ct&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">500</span><span class="p">,</span>
+            <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">153</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;effect&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;enum&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;none&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;colorloop&quot;</span>
+            <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;hue&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">65535</span><span class="p">,</span>
+            <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;on&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;boolean&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;rgb&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;maxItems&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+            <span class="nt">&quot;minItems&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;sat&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">255</span><span class="p">,</span>
+            <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;transitiontime&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;xy&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;maxItems&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="nt">&quot;minItems&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="post">
+<dt id="post--bridges-(?P-mac-[0-9a-f]{12})-lampsearch">
+<tt class="descname">POST </tt><tt class="descname">/bridges/(?P&lt;mac&gt;[0-9a-f]{12})/lampsearch</tt><a class="headerlink" href="#post--bridges-(?P-mac-[0-9a-f]{12})-lampsearch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Search for nearby lights for one minute and add them to this bridge.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>mac</strong> &#8211; The MAC address of the bridge that is to commence the search.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><em>The request body is ignored by this method.</em></p>
+</dd></dl>
+
+<dl class="post">
+<dt id="post--bridges-(?P-mac-[0-9a-f]{12})-resetbulb">
+<tt class="descname">POST </tt><tt class="descname">/bridges/(?P&lt;mac&gt;[0-9a-f]{12})/resetbulb</tt><a class="headerlink" href="#post--bridges-(?P-mac-[0-9a-f]{12})-resetbulb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reset a light nearby this bridge.</p>
+<p>This will undo the pairing of the light with the bridge it was previously paired with.
+The light will become paired with this bridge, however it will not be added automatically
+to this bridge; <a class="reference internal" href="#post--bridges-(?P-mac-[0-9a-f]{12})-lampsearch" title="POST /bridges/(?P&lt;mac&gt;[0-9a-f]{12})/lampsearch"><tt class="xref http http-post docutils literal"><span class="pre">POST</span> <span class="pre">/bridges/(?P&lt;mac&gt;[0-9a-f]{12})/lampsearch</span></tt></a> must
+be issued separately.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>mac</strong> &#8211; The bridge to use to perform the reset.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><em>The request body is ignored by this method.</em></p>
+</dd></dl>
+
+<dl class="get">
+<dt id="get--grid">
+<tt class="descname">GET </tt><tt class="descname">/grid</tt><a class="headerlink" href="#get--grid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the current grid used for <tt class="docutils literal"><span class="pre">(x,</span> <span class="pre">y)</span></tt> coordinate -&gt; light mapping.</p>
+<p><em>The request body is ignored by this method.</em></p>
+<p><strong>Example response</strong>: See the example request of <a class="reference internal" href="#post--grid" title="POST /grid"><tt class="xref http http-post docutils literal"><span class="pre">POST</span> <span class="pre">/grid</span></tt></a>.</p>
+<p><strong>Successful response format</strong>: See the request format of <a class="reference internal" href="#post--grid" title="POST /grid"><tt class="xref http http-post docutils literal"><span class="pre">POST</span> <span class="pre">/grid</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="post">
+<dt id="post--grid">
+<tt class="descname">POST </tt><tt class="descname">/grid</tt><a class="headerlink" href="#post--grid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the grid used for <tt class="docutils literal"><span class="pre">(x,</span> <span class="pre">y)</span></tt> coordinate -&gt; light mapping.</p>
+<p>An <tt class="docutils literal"><span class="pre">(x,</span> <span class="pre">y)</span></tt> coordinate will be mapped to the light specified at <tt class="docutils literal"><span class="pre">grid[y][x]</span></tt>.
+<tt class="docutils literal"><span class="pre">null</span></tt> values are allowed in the grid.</p>
+<p><strong>Example request</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">[</span>
+    <span class="p">[</span>
+        <span class="p">{</span><span class="nt">&quot;mac&quot;</span><span class="p">:</span> <span class="s2">&quot;0fb2a8549ec2&quot;</span><span class="p">,</span> <span class="nt">&quot;lamp&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>
+        <span class="p">{</span><span class="nt">&quot;mac&quot;</span><span class="p">:</span> <span class="s2">&quot;0fb2a8549ec2&quot;</span><span class="p">,</span> <span class="nt">&quot;lamp&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">},</span>
+        <span class="p">{</span><span class="nt">&quot;mac&quot;</span><span class="p">:</span> <span class="s2">&quot;0fb2a8549ec2&quot;</span><span class="p">,</span> <span class="nt">&quot;lamp&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span>
+    <span class="p">],</span>
+    <span class="p">[</span>
+        <span class="kc">null</span><span class="p">,</span>
+        <span class="kc">null</span><span class="p">,</span>
+        <span class="kc">null</span>
+    <span class="p">],</span>
+    <span class="p">[</span>
+        <span class="p">{</span><span class="nt">&quot;mac&quot;</span><span class="p">:</span> <span class="s2">&quot;e2fa9cc7df08&quot;</span><span class="p">,</span> <span class="nt">&quot;lamp&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>
+        <span class="p">{</span><span class="nt">&quot;mac&quot;</span><span class="p">:</span> <span class="s2">&quot;e2fa9cc7df08&quot;</span><span class="p">,</span> <span class="nt">&quot;lamp&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span>
+        <span class="p">{</span><span class="nt">&quot;mac&quot;</span><span class="p">:</span> <span class="s2">&quot;e2fa9cc7df08&quot;</span><span class="p">,</span> <span class="nt">&quot;lamp&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">},</span>
+    <span class="p">]</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<p><strong>Expected JSON format</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;anyOf&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="s2">&quot;mac&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;lamp&quot;</span>
+                    <span class="p">],</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;mac&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+                        <span class="p">},</span>
+                        <span class="nt">&quot;lamp&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+                        <span class="p">}</span>
+                    <span class="p">}</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;null&quot;</span>
+                <span class="p">}</span>
+            <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="post">
+<dt id="post--authenticate">
+<tt class="descname">POST </tt><tt class="descname">/authenticate</tt><a class="headerlink" href="#post--authenticate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Authenticate against the server. See <a class="reference internal" href="#authentication"><em>Authentication</em></a>.</p>
+<p>If the password was valid, responds with a <tt class="docutils literal"><span class="pre">user</span></tt> cookie in the <tt class="docutils literal"><span class="pre">Set-Cookie</span></tt>
+HTTP header, to be used with other requests.
+The username is currently not taken into account and may be set to any value.</p>
+<p><strong>Example request</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;password&quot;</span><span class="p">:</span> <span class="s2">&quot;mysecretpassword&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;myusername&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Expected JSON format</strong>:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;password&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;password&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;username&quot;</span>
+    <span class="p">],</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="get">
+<dt id="get--status">
+<tt class="descname">GET </tt><tt class="descname">/status</tt><a class="headerlink" href="#get--status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Always responds with 200 OK. Can be used to tell whether the server is up.</p>
+<p><em>The request body is ignored by this method.</em></p>
+</dd></dl>
+
+</div>
+</div>
 </div>
 
 
@@ -64,6 +1047,20 @@
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#"><tt class="docutils literal"><span class="pre">lightserver</span></tt> &#8212; Server exposing an HTTP API for controlling several Philips Hue bridges</a><ul>
+<li><a class="reference internal" href="#module-lightserver">The API</a><ul>
+<li><a class="reference internal" href="#responses">Responses</a></li>
+<li><a class="reference internal" href="#failed-requests">Failed requests</a></li>
+<li><a class="reference internal" href="#authentication">Authentication</a></li>
+<li><a class="reference internal" href="#api-methods">API methods</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
   <h4>Previous topic</h4>
   <p class="topless"><a href="playhouse.html"
                         title="previous chapter"><tt class="docutils literal"><span class="pre">playhouse</span></tt> &#8212; Python library for communicating with Philips Hue bridges</a></p>
@@ -101,6 +1098,9 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
+        <li class="right" >
+          <a href="http-routingtable.html" title="HTTP Routing Table"
+             >routing table</a> |</li>
         <li class="right" >
           <a href="resetutil.html" title="resetutil — Utility for resetting Philips Hue bulbs and pairing them with bridges"
              >next</a> |</li>
