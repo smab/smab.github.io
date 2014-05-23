@@ -24,7 +24,7 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="top" title="Playhouse 0.1 documentation" href="index.html" />
-    <link rel="next" title="The configuration interface" href="configuration.html" />
+    <link rel="next" title="Configuration" href="configuration.html" />
     <link rel="prev" title="resetutil — Utility for resetting Philips Hue bulbs and pairing them with bridges" href="resetutil.html" /> 
   </head>
   <body>
@@ -35,13 +35,13 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
           <a href="http-routingtable.html" title="HTTP Routing Table"
              >routing table</a> |</li>
         <li class="right" >
-          <a href="configuration.html" title="The configuration interface"
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="configuration.html" title="Configuration"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="resetutil.html" title="resetutil — Utility for resetting Philips Hue bulbs and pairing them with bridges"
@@ -57,26 +57,71 @@
             
   <div class="section" id="web-server">
 <h1>Web server<a class="headerlink" href="#web-server" title="Permalink to this headline">¶</a></h1>
-<p>Blabla webbservern är en server för webben</p>
-<p>Hur man startar den osv</p>
+<p>The Web server is the frontend that the users communicate with. It is
+a Tornado-based web server that communicates with the Light server. It
+handles the queue, the current game or animation, and is able to setup
+the installation through the <a class="reference internal" href="configuration.html#config"><em>Configuration</em></a></p>
+<p>The server is started by executing <tt class="docutils literal"><span class="pre">python</span> <span class="pre">src/webserver</span></tt>.</p>
+<p>Dependencies:</p>
+<ol class="arabic simple">
+<li>Python &gt;= 3.4</li>
+<li>python-tornado</li>
+<li>python-pillow (optional, for animations)</li>
+</ol>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="configuration.html">The configuration interface</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="configuration.html#the-configuration-file">The configuration file</a></li>
-<li class="toctree-l2"><a class="reference internal" href="configuration.html#setup">Setup</a></li>
-<li class="toctree-l2"><a class="reference internal" href="configuration.html#settings">Settings</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="configuration.html#game-selection">Game selection</a></li>
-<li class="toctree-l3"><a class="reference internal" href="configuration.html#game-settings">Game settings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#the-configuration-interface">The configuration interface</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html#setup">Setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html#settings">Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html#bridges">Bridges</a></li>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html#grid">Grid</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="configuration.html#bridges">Bridges</a></li>
-<li class="toctree-l2"><a class="reference internal" href="configuration.html#grid">Grid</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#the-configuration-file">The configuration file</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="configuration.html#attributes">Attributes</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="games.html">Game creation and the game API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="games.html#templates">Templates</a></li>
-<li class="toctree-l2"><a class="reference internal" href="games.html#game-modules">Game modules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="games.html#the-game-api">The game API</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="games.html">Game API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="games.html#lifetime-of-a-game">Lifetime of a game</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="games.html#setup-undoing-setup">Setup &amp; undoing setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="games.html#game-implementation">Game implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="games.html#metadata">Metadata</a></li>
+<li class="toctree-l3"><a class="reference internal" href="games.html#class-variables">Class variables</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="games.html#utility-functions">Utility functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="games.html#lamp-related-methods-methods-on-game">Lamp-related methods (methods on <tt class="docutils literal"><span class="pre">Game</span></tt>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="games.html#utility-methods-methods-on-game">Utility methods (methods on <tt class="docutils literal"><span class="pre">Game</span></tt>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="games.html#utility-functions-functions-on-lightgames">Utility functions (functions on <tt class="docutils literal"><span class="pre">lightgames</span></tt>)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="games.html#simplegame">SimpleGame</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="games.html#template">Template</a></li>
+<li class="toctree-l3"><a class="reference internal" href="games.html#utility-methods-methods-on-simplegame">Utility methods (methods on <tt class="docutils literal"><span class="pre">SimpleGame</span></tt>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="games.html#utility-functions-functions-on-simplegame">Utility functions (functions on <tt class="docutils literal"><span class="pre">simplegame</span></tt>)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="animations.html">Animations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="animations.html#technical-details">Technical details</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="animations.html#settings">Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="animations.html#the-animation-loop">The animation loop</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="animations.html#creating-animations">Creating animations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="animations.html#limitations">Limitations</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="queue.html">Queue</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="queue.html#communication">Communication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="queue.html#usage-in-games">Usage in games</a></li>
+<li class="toctree-l2"><a class="reference internal" href="queue.html#internal-methods">Internal methods</a></li>
 </ul>
 </li>
 </ul>
@@ -94,7 +139,7 @@
                         title="previous chapter"><tt class="docutils literal"><span class="pre">resetutil</span></tt> &#8212; Utility for resetting Philips Hue bulbs and pairing them with bridges</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="configuration.html"
-                        title="next chapter">The configuration interface</a></p>
+                        title="next chapter">Configuration</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/frontend.txt"
@@ -124,13 +169,13 @@
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
           <a href="http-routingtable.html" title="HTTP Routing Table"
              >routing table</a> |</li>
         <li class="right" >
-          <a href="configuration.html" title="The configuration interface"
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="configuration.html" title="Configuration"
              >next</a> |</li>
         <li class="right" >
           <a href="resetutil.html" title="resetutil — Utility for resetting Philips Hue bulbs and pairing them with bridges"

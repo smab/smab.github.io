@@ -1,0 +1,276 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Queue &mdash; Playhouse 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Playhouse 0.1 documentation" href="index.html" />
+    <link rel="up" title="Web server" href="frontend.html" />
+    <link rel="prev" title="Animations" href="animations.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="http-routingtable.html" title="HTTP Routing Table"
+             >routing table</a> |</li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="animations.html" title="Animations"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">Playhouse 0.1 documentation</a> &raquo;</li>
+          <li><a href="frontend.html" accesskey="U">Web server</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="queue">
+<h1>Queue<a class="headerlink" href="#queue" title="Permalink to this headline">¶</a></h1>
+<p>The Queue module (<tt class="docutils literal"><span class="pre">gamequeue.py</span></tt>) lets visitors of the Playhouse website queue up to play the various games in the Playhouse project.</p>
+<p>Internally it uses a <tt class="docutils literal"><span class="pre">collections.deque</span></tt> to keep track of queue positions, websockets for communication between the front end and back end, and session cookies to keep track of connections. The websockets and session cookies are shared with the rest of the Playhouse package, which makes it easy to hand over connections to a game when it&#8217;s their time to play.</p>
+<div class="section" id="communication">
+<h2>Communication<a class="headerlink" href="#communication" title="Permalink to this headline">¶</a></h2>
+<p>The Queue python module uses websockets to communicate with the javascript front
+end. The messages are encoded with JSON, and there is only one type of message
+in each direction, shown below. Messages are sent using the API specified in the
+<tt class="docutils literal"><span class="pre">lightgames.py</span></tt> module.</p>
+<p>The front end to back end message will contain two JSON attributes:</p>
+<ul>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">queueaction</span></tt> which specifies what action the user want to take, possible values</dt>
+<dd><p class="first last">are <tt class="docutils literal"><span class="pre">1</span></tt> for joining the queue and <tt class="docutils literal"><span class="pre">0</span></tt> for leaving the queue.</p>
+</dd>
+</dl>
+</li>
+<li><p class="first"><tt class="docutils literal"><span class="pre">session</span></tt> which specifies which session this action belongs.</p>
+</li>
+</ul>
+<p>The back end to front end message will contain a single JSON attribute.</p>
+<ul>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">queuepos</span></tt> which specifies wether or not the user is in the queue, and at what</dt>
+<dd><p class="first last">position. Possible values are <tt class="docutils literal"><span class="pre">0</span></tt> for not in the queue, and any positive integer
+for in the queue and at the position specified by the value.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<div class="section" id="usage-in-games">
+<h2>Usage in games<a class="headerlink" href="#usage-in-games" title="Permalink to this headline">¶</a></h2>
+<p>Games shouldn&#8217;t interact with the queue directly, but rather use the methods
+specified in the <a class="reference internal" href="games.html#gameapi"><em>Game API</em></a>. There is 9 methods in <tt class="docutils literal"><span class="pre">gamequeue.py</span></tt> that
+is called by <tt class="docutils literal"><span class="pre">lightgames.py</span></tt> for usage in the games:</p>
+<ul>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">gamequeue.try_get_new_players()</span></tt></dt>
+<dd><p class="first last">Tries to get new players from the queue and removes disconnected clients in the top the queue.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">gamequeue.set_num_players(num)</span></tt></dt>
+<dd><p class="first last">Sets the size of the player list.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">gamequeue.remove_all_players()</span></tt></dt>
+<dd><p class="first last">Removes all players, see <tt class="docutils literal"><span class="pre">queue.remove_player(idx)</span></tt>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">gamequeue.remove_player(idx)</span></tt></dt>
+<dd><p class="first last">Removes a player from the player list and from the queue.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">gamequeue.get_player_handlers()</span></tt></dt>
+<dd><p class="first last">Returns a list of handlers for player connections.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">gamequeue.addplayer_callback(handler)</span></tt></dt>
+<dd><p class="first last">Will be overridden by a game specific method
+in the game API, and called by the queue whenever a new player is added.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">gamequeue.removeplayer_callback(handler)</span></tt></dt>
+<dd><p class="first last">Will be overridden by a game specific method
+in the game API, and called by the queue whenever a new player is removed.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">gamequeue.enqueue_callback(handler)</span></tt></dt>
+<dd><p class="first last">Will be overridden by a game specific method
+in the game API, and called by the queue whenever a new player enqueues.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<div class="section" id="internal-methods">
+<h2>Internal methods<a class="headerlink" href="#internal-methods" title="Permalink to this headline">¶</a></h2>
+<p>These are the methods used internally in <tt class="docutils literal"><span class="pre">gamequeue.py</span></tt>, some of  which are connected to
+the rest of the Playhouse package.</p>
+<ul>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">on_connect(self,</span> <span class="pre">handler)</span></tt></dt>
+<dd><p class="first last">Called externally when a new client connects. The queue
+will acknowledge this by sending a message over the <tt class="docutils literal"><span class="pre">handler</span></tt> websocket stating that
+the client is not in the queue.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">size(self)</span></tt></dt>
+<dd><p class="first last">Used to return the size of the internal <tt class="docutils literal"><span class="pre">deque</span></tt> object.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">refresh(self)</span></tt></dt>
+<dd><p class="first last">Will refresh the queue positions by iterating over the queue and send
+a message to each client with its current queue position.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">on_close(self,</span> <span class="pre">handler)</span></tt></dt>
+<dd><p class="first last">Called externally when a connection is closed. Will try to
+remove the connection from its list of session and then refresh the queue.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">on_message(self,</span> <span class="pre">handler,</span> <span class="pre">msg)</span></tt></dt>
+<dd><p class="first last">Called externally when a message from a client is sent
+over a websocket that is meant for the queue. This message will contain a queue action
+and the queue will try to either enqueue the client or remove it from the queue. If the
+client was removed from the queue it will refresh itself, and send a message to the client
+acknowledging that it is no longer in the queue. If the client was enqueued, it will send
+a message to the client with its position in the queue, and make and enqueue callback
+alerting the current game that there is a new player available.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">clear(self)</span></tt></dt>
+<dd><p class="first last">Will send a message to all enqueued clients stating they are no longer in
+the queue, and then remove all connections.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">enqueue_callback(self,</span> <span class="pre">handler)</span></tt></dt>
+<dd><p class="first last">This method is initially not defined, but will instead
+be overridden by the Game API. It is then called whenever a new client is enqueued, to
+allow the games to execute logic when there are new available players.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Queue</a><ul>
+<li><a class="reference internal" href="#communication">Communication</a></li>
+<li><a class="reference internal" href="#usage-in-games">Usage in games</a></li>
+<li><a class="reference internal" href="#internal-methods">Internal methods</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="animations.html"
+                        title="previous chapter">Animations</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/queue.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="http-routingtable.html" title="HTTP Routing Table"
+             >routing table</a> |</li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="animations.html" title="Animations"
+             >previous</a> |</li>
+        <li><a href="index.html">Playhouse 0.1 documentation</a> &raquo;</li>
+          <li><a href="frontend.html" >Web server</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, John Eriksson, Arvid Fahlström Myrman, Jonas Höglund, Hannes Leskelä, Christian Lidström, Mattias Palo, Markus Videll, Tomas Wickman, Emil Öhman.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

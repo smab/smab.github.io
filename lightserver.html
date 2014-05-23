@@ -36,11 +36,11 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
           <a href="http-routingtable.html" title="HTTP Routing Table"
              >routing table</a> |</li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="resetutil.html" title="resetutil — Utility for resetting Philips Hue bulbs and pairing them with bridges"
              accesskey="N">next</a> |</li>
@@ -96,13 +96,13 @@ the light server will run. This can be done by running
 <tt class="docutils literal"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">https://github.com/smab/playhouse-lights.git</span></tt>.</li>
 <li>If you do not already have a config file, copy the file <tt class="docutils literal"><span class="pre">config.json.default</span></tt>
 and name it <tt class="docutils literal"><span class="pre">config.json</span></tt></li>
-<li>Change the configuration file as necessary; see <a class="reference internal" href="#config"><em>Configuration file</em></a>.</li>
+<li>Change the configuration file as necessary; see <a class="reference internal" href="#lsconfig"><em>Configuration file</em></a>.</li>
 <li>Run the server by executing <tt class="docutils literal"><span class="pre">python3</span> <span class="pre">src/lightserver.py</span></tt>
 from the folder where you just created the configuration file.</li>
 </ol>
 </div>
 <div class="section" id="configuration-file">
-<span id="config"></span><h3>Configuration file<a class="headerlink" href="#configuration-file" title="Permalink to this headline">¶</a></h3>
+<span id="lsconfig"></span><h3>Configuration file<a class="headerlink" href="#configuration-file" title="Permalink to this headline">¶</a></h3>
 <p>The configuration file uses JSON syntax.
 The configuration itself is a JSON object with various properties, as listed here:</p>
 <table border="1" class="docutils">
@@ -1070,18 +1070,18 @@ be issued separately.</p>
             <span class="nt">&quot;anyOf&quot;</span><span class="p">:</span> <span class="p">[</span>
                 <span class="p">{</span>
                     <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;mac&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+                        <span class="p">},</span>
+                        <span class="nt">&quot;lamp&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+                        <span class="p">}</span>
+                    <span class="p">},</span>
                     <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
                         <span class="s2">&quot;mac&quot;</span><span class="p">,</span>
                         <span class="s2">&quot;lamp&quot;</span>
-                    <span class="p">],</span>
-                    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
-                        <span class="nt">&quot;lamp&quot;</span><span class="p">:</span> <span class="p">{</span>
-                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
-                        <span class="p">},</span>
-                        <span class="nt">&quot;mac&quot;</span><span class="p">:</span> <span class="p">{</span>
-                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
-                        <span class="p">}</span>
-                    <span class="p">}</span>
+                    <span class="p">]</span>
                 <span class="p">},</span>
                 <span class="p">{</span>
                     <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;null&quot;</span>
@@ -1202,11 +1202,11 @@ The username is currently not taken into account and may be set to any value.</p
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
           <a href="http-routingtable.html" title="HTTP Routing Table"
              >routing table</a> |</li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="resetutil.html" title="resetutil — Utility for resetting Philips Hue bulbs and pairing them with bridges"
              >next</a> |</li>
