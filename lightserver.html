@@ -57,10 +57,110 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="lightserver-server-exposing-an-http-api-for-controlling-several-philips-hue-bridges">
-<h1><a class="reference internal" href="#module-lightserver" title="lightserver"><tt class="xref py py-mod docutils literal"><span class="pre">lightserver</span></tt></a> &#8212; Server exposing an HTTP API for controlling several Philips Hue bridges<a class="headerlink" href="#lightserver-server-exposing-an-http-api-for-controlling-several-philips-hue-bridges" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="module-lightserver">
-<span id="the-api"></span><h2>The API<a class="headerlink" href="#module-lightserver" title="Permalink to this headline">¶</a></h2>
+  <div class="section" id="module-lightserver">
+<span id="lightserver-server-exposing-an-http-api-for-controlling-several-philips-hue-bridges"></span><h1><a class="reference internal" href="#module-lightserver" title="lightserver"><tt class="xref py py-mod docutils literal"><span class="pre">lightserver</span></tt></a> &#8212; Server exposing an HTTP API for controlling several Philips Hue bridges<a class="headerlink" href="#module-lightserver" title="Permalink to this headline">¶</a></h1>
+<p>This is the light server component of the Playhouse project.</p>
+<p>The light server handles the current light grid configuration (with Hue bridges and lights)
+and the communication between the application (typically the Playhouse web server)
+and the separate Hue bridges. It exposes an HTTP API to enable remote control of the
+lights over the network; see <a class="reference internal" href="#api"><em>The API</em></a>.</p>
+<div class="section" id="running-the-server">
+<h2>Running the server<a class="headerlink" href="#running-the-server" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="dependencies">
+<h3>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Python 3.3+</li>
+<li>Tornado 3.2+</li>
+<li>PycURL 7.19.3+</li>
+<li>libcurl 7.21.1+</li>
+<li>jsonschema 2.3.0+</li>
+</ul>
+</div>
+<div class="section" id="setup">
+<h3>Setup<a class="headerlink" href="#setup" title="Permalink to this headline">¶</a></h3>
+<p>The Hue bridges themselves have no HTTPS support, and the protection against unauthorized commands
+is very weak. Therefore, it is strongly recommended to set up the Hue bridges in an
+internal network configured so that they cannot communicate with the outside world directly.
+The Hue bridges communicate through port 80 and 30000, so this can be done by configuring
+a firewall to restrict access through those ports.
+The light server must then be run within this internal network.</p>
+<p>The light server supports HTTPS for communication between itself and the application,
+and can therefore safely communicate with the outside world if HTTPS is configured and enabled.
+Additionally, authentication can be enabled so that a valid password will be required
+in order to send requests to the light server.</p>
+<p>The standard port for the light server is 4711.</p>
+<p>The light server setup is a few simple steps:</p>
+<ol class="arabic simple">
+<li>Download all files from the playhouse-lights repository to the computer where
+the light server will run. This can be done by running
+<tt class="docutils literal"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">https://github.com/smab/playhouse-lights.git</span></tt>.</li>
+<li>If you do not already have a config file, copy the file <tt class="docutils literal"><span class="pre">config.json.default</span></tt>
+and name it <tt class="docutils literal"><span class="pre">config.json</span></tt></li>
+<li>Change the configuration file as necessary; see <a class="reference internal" href="#config"><em>Configuration file</em></a>.</li>
+<li>Run the server by executing <tt class="docutils literal"><span class="pre">python3</span> <span class="pre">src/lightserver.py</span></tt>
+from the folder where you just created the configuration file.</li>
+</ol>
+</div>
+<div class="section" id="configuration-file">
+<span id="config"></span><h3>Configuration file<a class="headerlink" href="#configuration-file" title="Permalink to this headline">¶</a></h3>
+<p>The configuration file uses JSON syntax.
+The configuration itself is a JSON object with various properties, as listed here:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="30%" />
+<col width="22%" />
+<col width="48%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Name</th>
+<th class="head">Allowed values</th>
+<th class="head">Meaning</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>port</td>
+<td>Integer, 0-65535</td>
+<td>Server port number (default: 4711).</td>
+</tr>
+<tr class="row-odd"><td>password</td>
+<td>Text string</td>
+<td>Server password.</td>
+</tr>
+<tr class="row-even"><td>require_password</td>
+<td>Boolean</td>
+<td>If true, the server will require a password;
+see <a class="reference internal" href="#authentication"><em>Authentication</em></a>.</td>
+</tr>
+<tr class="row-odd"><td>validate_state_changes</td>
+<td>Boolean</td>
+<td>If true, the server will validate values and
+parameters when changing the state of lights.
+Setting this value to false can be useful
+in cases where the internal validation schema
+is outdated, though it may lead to unexpected
+results.</td>
+</tr>
+<tr class="row-even"><td>ssl</td>
+<td>Boolean</td>
+<td>If true, the server will communicate with
+the application using HTTPS.</td>
+</tr>
+<tr class="row-odd"><td>certfile</td>
+<td>String, path to file</td>
+<td>If SSL is enabled, this file will
+be used as the SSL certificate.</td>
+</tr>
+<tr class="row-even"><td>keyfile</td>
+<td>String, path to file</td>
+<td>If SSL is enabled, this file will
+be used as the SSL private key.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="the-api">
+<span id="api"></span><h2>The API<a class="headerlink" href="#the-api" title="Permalink to this headline">¶</a></h2>
 <p>This is a REST-inspired API that simplifies communication with Philips Hue bridges.</p>
 <p>The API abstracts access to individual bridges by placing each light associated with a bridge
 into a virtual grid, after which lights can be addressed by specifying the <tt class="docutils literal"><span class="pre">(x,</span> <span class="pre">y)</span></tt> coordinate
@@ -154,7 +254,7 @@ the error type, and the property <tt class="docutils literal"><span class="pre">
                     <span class="p">},</span>
                     <span class="nt">&quot;rgb&quot;</span><span class="p">:</span> <span class="p">{</span>
                         <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
-                            <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                            <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">255</span><span class="p">,</span>
                             <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
                             <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
                         <span class="p">},</span>
@@ -251,7 +351,7 @@ the error type, and the property <tt class="docutils literal"><span class="pre">
         <span class="p">},</span>
         <span class="nt">&quot;rgb&quot;</span><span class="p">:</span> <span class="p">{</span>
             <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">255</span><span class="p">,</span>
                 <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
                 <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
             <span class="p">},</span>
@@ -753,7 +853,7 @@ on the bridge must be pressed prior to issuing a request.</p>
                     <span class="p">},</span>
                     <span class="nt">&quot;rgb&quot;</span><span class="p">:</span> <span class="p">{</span>
                         <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
-                            <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                            <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">255</span><span class="p">,</span>
                             <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
                             <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
                         <span class="p">},</span>
@@ -854,7 +954,7 @@ on the bridge must be pressed prior to issuing a request.</p>
         <span class="p">},</span>
         <span class="nt">&quot;rgb&quot;</span><span class="p">:</span> <span class="p">{</span>
             <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="nt">&quot;maximum&quot;</span><span class="p">:</span> <span class="mi">255</span><span class="p">,</span>
                 <span class="nt">&quot;minimum&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
                 <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
             <span class="p">},</span>
@@ -969,17 +1069,17 @@ be issued separately.</p>
         <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
             <span class="nt">&quot;anyOf&quot;</span><span class="p">:</span> <span class="p">[</span>
                 <span class="p">{</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
                     <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
                         <span class="s2">&quot;mac&quot;</span><span class="p">,</span>
                         <span class="s2">&quot;lamp&quot;</span>
                     <span class="p">],</span>
-                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
                     <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
-                        <span class="nt">&quot;mac&quot;</span><span class="p">:</span> <span class="p">{</span>
-                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
-                        <span class="p">},</span>
                         <span class="nt">&quot;lamp&quot;</span><span class="p">:</span> <span class="p">{</span>
                             <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+                        <span class="p">},</span>
+                        <span class="nt">&quot;mac&quot;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
                         <span class="p">}</span>
                     <span class="p">}</span>
                 <span class="p">},</span>
@@ -1050,7 +1150,13 @@ The username is currently not taken into account and may be set to any value.</p
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#"><tt class="docutils literal"><span class="pre">lightserver</span></tt> &#8212; Server exposing an HTTP API for controlling several Philips Hue bridges</a><ul>
-<li><a class="reference internal" href="#module-lightserver">The API</a><ul>
+<li><a class="reference internal" href="#running-the-server">Running the server</a><ul>
+<li><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li><a class="reference internal" href="#setup">Setup</a></li>
+<li><a class="reference internal" href="#configuration-file">Configuration file</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#the-api">The API</a><ul>
 <li><a class="reference internal" href="#responses">Responses</a></li>
 <li><a class="reference internal" href="#failed-requests">Failed requests</a></li>
 <li><a class="reference internal" href="#authentication">Authentication</a></li>

@@ -73,20 +73,20 @@ is running in order to function.</p>
 <p>Hue bridges communicate through a RESTful JSON API through TCP port 80.
 This class wraps this RESTful interface and provides a Python API for
 convenient Hue bridge operation. The functions for setting the current
-state of a particular lamp uses the Hue light state names, see
+state of a particular lamp use the Hue light state names, see
 <a class="reference external" href="http://developers.meethue.com/1_lightsapi.html#16_set_light_state">http://developers.meethue.com/1_lightsapi.html#16_set_light_state</a> for reference.</p>
 <dl class="staticmethod">
 <dt id="playhouse.Bridge.__new__">
 <em class="property">static </em><tt class="descname">__new__</tt><big>(</big><em>ipaddress</em>, <em>username=None</em>, <em>defaults=None</em>, <em>timeout=2</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#Bridge.__new__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.Bridge.__new__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a new Bridge object. Example usage:</p>
-<div class="highlight-python"><div class="highlight"><pre>@tornado.gen.coroutine
-def turn_off_lights():
-    future = Bridge(&quot;192.168.0.105&quot;, username=&quot;mysecretusername&quot;,
-                    defaults={&quot;transitiontime&quot;: 10})
-    bridge = yield future
-    yield bridge.set_group(0, on=False})
+<div class="highlight-py3"><div class="highlight"><pre><span class="nd">@tornado</span><span class="o">.</span><span class="n">gen</span><span class="o">.</span><span class="n">coroutine</span>
+<span class="k">def</span> <span class="nf">turn_off_lights</span><span class="p">():</span>
+    <span class="n">future</span> <span class="o">=</span> <span class="n">Bridge</span><span class="p">(</span><span class="s">&quot;192.168.0.105&quot;</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="s">&quot;mysecretusername&quot;</span><span class="p">,</span>
+                    <span class="n">defaults</span><span class="o">=</span><span class="p">{</span><span class="s">&quot;transitiontime&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">})</span>
+    <span class="n">bridge</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">future</span>
+    <span class="k">yield</span> <span class="n">bridge</span><span class="o">.</span><span class="n">set_group</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="k">False</span><span class="p">})</span>
 
-ioloop.run_sync(turn_off_lights)
+<span class="n">ioloop</span><span class="o">.</span><span class="n">run_sync</span><span class="p">(</span><span class="n">turn_off_lights</span><span class="p">)</span>
 </pre></div>
 </div>
 <table class="docutils field-list" frame="void" rules="none">
@@ -588,7 +588,7 @@ reset, or when the reset attempt has failed.</td>
 
 <dl class="class">
 <dt id="playhouse.LightGrid">
-<em class="property">class </em><tt class="descclassname">playhouse.</tt><tt class="descname">LightGrid</tt><big>(</big><em>usernames=None</em>, <em>grid=None</em>, <em>buffered=False</em>, <em>defaults=None</em>, <em>assert_reachable=True</em><big>)</big><a class="reference internal" href="_modules/playhouse.html#LightGrid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.LightGrid" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">playhouse.</tt><tt class="descname">LightGrid</tt><a class="reference internal" href="_modules/playhouse.html#LightGrid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#playhouse.LightGrid" title="Permalink to this definition">¶</a></dt>
 <dd><p>Keeps track of several bridges, abstracting access to individual lights.</p>
 <dl class="method">
 <dt id="playhouse.LightGrid.__init__">

@@ -50,6 +50,24 @@
           <div class="body">
             
   <h1>Source code for playhouse</h1><div class="highlight"><pre>
+<span class="c"># Playhouse: Making buildings into interactive displays using remotely controllable lights.</span>
+<span class="c"># Copyright (C) 2014  John Eriksson, Arvid Fahlström Myrman, Jonas Höglund,</span>
+<span class="c">#                     Hannes Leskelä, Christian Lidström, Mattias Palo,</span>
+<span class="c">#                     Markus Videll, Tomas Wickman, Emil Öhman.</span>
+<span class="c">#</span>
+<span class="c"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c"># it under the terms of the GNU Affero General Public License as published by</span>
+<span class="c"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c"># (at your option) any later version.</span>
+<span class="c">#</span>
+<span class="c"># This program is distributed in the hope that it will be useful,</span>
+<span class="c"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c"># GNU Affero General Public License for more details.</span>
+<span class="c">#</span>
+<span class="c"># You should have received a copy of the GNU Affero General Public License</span>
+<span class="c"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
 <span class="sd">&quot;&quot;&quot;A `Tornado &lt;http://www.tornadoweb.org/&gt;`_-based Python library for communicating</span>
 <span class="sd">with Philips Hue bridges.</span>
 
@@ -246,7 +264,7 @@
 <span class="sd">    Hue bridges communicate through a RESTful JSON API through TCP port 80.</span>
 <span class="sd">    This class wraps this RESTful interface and provides a Python API for</span>
 <span class="sd">    convenient Hue bridge operation. The functions for setting the current</span>
-<span class="sd">    state of a particular lamp uses the Hue light state names, see</span>
+<span class="sd">    state of a particular lamp use the Hue light state names, see</span>
 <span class="sd">    http://developers.meethue.com/1_lightsapi.html#16_set_light_state for reference.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">ignoredkeys</span> <span class="o">=</span> <span class="p">{</span><span class="s">&quot;transitiontime&quot;</span><span class="p">,</span> <span class="s">&quot;alert&quot;</span><span class="p">,</span> <span class="s">&quot;effect&quot;</span><span class="p">,</span> <span class="s">&quot;colormode&quot;</span><span class="p">,</span> <span class="s">&quot;reachable&quot;</span><span class="p">}</span>
@@ -330,7 +348,6 @@
             <span class="n">timeout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span>
         <span class="n">response</span> <span class="o">=</span> <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s">&quot;http://{}{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">,</span> <span class="n">url</span><span class="p">),</span>
                                            <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="n">body</span><span class="p">,</span> <span class="n">request_timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Response from bridge: </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">response</span>
 </div>
     <span class="nd">@tornado.gen.coroutine</span>
@@ -355,11 +372,12 @@
         <span class="k">elif</span> <span class="n">method</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&quot;POST&quot;</span><span class="p">,</span> <span class="s">&quot;PUT&quot;</span><span class="p">):</span> <span class="c"># the curl http client doesn&#39;t accept body=None for POST/PUT</span>
             <span class="n">body</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
 
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Sending </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s"> request to </span><span class="si">%s</span><span class="s">: </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">,</span> <span class="n">body</span><span class="p">)</span>
         <span class="n">res</span> <span class="o">=</span> <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">http_request</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">body</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
             <span class="k">return</span>
-
         <span class="n">res</span> <span class="o">=</span> <span class="n">tornado</span><span class="o">.</span><span class="n">escape</span><span class="o">.</span><span class="n">json_decode</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">body</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Got </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s"> response from </span><span class="si">%s</span><span class="s">: </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ipaddress</span><span class="p">,</span> <span class="n">res</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">res</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">list</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">res</span><span class="p">:</span>
@@ -407,7 +425,9 @@
         <span class="n">defs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="s">&#39;rgb&#39;</span> <span class="ow">in</span> <span class="n">defs</span><span class="p">:</span>
-            <span class="n">defs</span><span class="p">[</span><span class="s">&#39;xy&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rgb2xy</span><span class="p">(</span><span class="o">*</span><span class="n">defs</span><span class="p">[</span><span class="s">&#39;rgb&#39;</span><span class="p">])</span>
+            <span class="n">hue</span><span class="p">,</span> <span class="n">sat</span><span class="p">,</span> <span class="n">lum</span> <span class="o">=</span> <span class="n">rgb_to_hsl</span><span class="p">(</span><span class="o">*</span><span class="n">defs</span><span class="p">[</span><span class="s">&#39;rgb&#39;</span><span class="p">])</span>
+            <span class="n">defs</span><span class="p">[</span><span class="s">&#39;hue&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">hue</span> <span class="o">*</span> <span class="mi">65536</span> <span class="o">/</span> <span class="mi">360</span><span class="p">)</span>
+            <span class="n">defs</span><span class="p">[</span><span class="s">&#39;sat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sat</span>
             <span class="k">del</span> <span class="n">defs</span><span class="p">[</span><span class="s">&#39;rgb&#39;</span><span class="p">]</span>
 
         <span class="k">return</span> <span class="n">defs</span>
@@ -1076,36 +1096,29 @@
 
     <span class="k">return</span> <span class="n">ElementTree</span><span class="o">.</span><span class="n">ElementTree</span><span class="p">(</span><span class="n">root</span><span class="p">),</span> <span class="n">namespaces</span>
 
-<span class="k">def</span> <span class="nf">rgb2xy</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Converts an RGB colour to XY colour format.&quot;&quot;&quot;</span>
+<span class="c"># shamelessly stolen from the web server for backwards compatibility reasons</span>
+<span class="k">def</span> <span class="nf">rgb_to_hsl</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="c"># via http://en.wikipedia.org/wiki/HSL_and_HSV</span>
+    <span class="n">M</span><span class="p">,</span> <span class="n">m</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="n">g</span><span class="p">,</span><span class="n">b</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="n">g</span><span class="p">,</span><span class="n">b</span><span class="p">)</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">M</span> <span class="o">-</span> <span class="n">m</span>
 
-    <span class="c"># Apply gamma</span>
-    <span class="k">if</span> <span class="n">red</span> <span class="o">&gt;</span> <span class="mf">0.04045</span><span class="p">:</span>
-        <span class="n">red</span> <span class="o">=</span> <span class="p">((</span><span class="n">red</span> <span class="o">+</span> <span class="mf">0.055</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="mf">0.055</span><span class="p">))</span><span class="o">**</span><span class="mf">2.4</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">red</span> <span class="o">=</span> <span class="n">red</span> <span class="o">/</span> <span class="mf">12.92</span>
+    <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">hue</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">elif</span> <span class="n">M</span> <span class="o">==</span> <span class="n">r</span><span class="p">:</span> <span class="c"># ↓ may be &lt;0, so use + and % to make sure that it is in [0,360]</span>
+        <span class="n">hue</span> <span class="o">=</span> <span class="p">((</span><span class="n">g</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span><span class="o">/</span><span class="n">c</span> <span class="o">*</span> <span class="mi">360</span> <span class="o">+</span> <span class="mi">360</span><span class="o">*</span><span class="mi">6</span><span class="p">)</span> <span class="o">%</span> <span class="p">(</span><span class="mi">360</span> <span class="o">*</span> <span class="mi">6</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">M</span> <span class="o">==</span> <span class="n">g</span><span class="p">:</span>
+        <span class="n">hue</span> <span class="o">=</span> <span class="p">(</span><span class="n">b</span> <span class="o">-</span> <span class="n">r</span><span class="p">)</span><span class="o">/</span><span class="n">c</span> <span class="o">*</span> <span class="mi">360</span> <span class="o">+</span> <span class="p">(</span><span class="mi">360</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">M</span> <span class="o">==</span> <span class="n">b</span><span class="p">:</span>
+        <span class="n">hue</span> <span class="o">=</span> <span class="p">(</span><span class="n">r</span> <span class="o">-</span> <span class="n">g</span><span class="p">)</span><span class="o">/</span><span class="n">c</span> <span class="o">*</span> <span class="mi">360</span> <span class="o">+</span> <span class="p">(</span><span class="mi">360</span> <span class="o">*</span> <span class="mi">4</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">green</span> <span class="o">&gt;</span> <span class="mf">0.04045</span><span class="p">:</span>
-        <span class="n">green</span> <span class="o">=</span> <span class="p">((</span><span class="n">green</span> <span class="o">+</span> <span class="mf">0.055</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="mf">0.055</span><span class="p">))</span><span class="o">**</span><span class="mf">2.4</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">green</span> <span class="o">=</span> <span class="n">green</span> <span class="o">/</span> <span class="mf">12.92</span>
+    <span class="n">hue</span> <span class="o">/=</span> <span class="mi">6</span>
+    <span class="n">lum</span> <span class="o">=</span> <span class="n">M</span><span class="o">/</span><span class="mi">2</span> <span class="o">+</span> <span class="n">m</span><span class="o">/</span><span class="mi">2</span>
+    <span class="n">divisor</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">lum</span> <span class="k">if</span> <span class="n">lum</span> <span class="o">&lt;</span> <span class="mi">128</span> <span class="k">else</span> <span class="mi">256</span> <span class="o">-</span> <span class="n">lum</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">divisor</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+    <span class="n">sat</span> <span class="o">=</span> <span class="n">c</span> <span class="o">/</span> <span class="n">divisor</span> <span class="o">*</span> <span class="mi">255</span>
 
-    <span class="k">if</span> <span class="n">blue</span> <span class="o">&gt;</span> <span class="mf">0.04045</span><span class="p">:</span>
-        <span class="n">blue</span> <span class="o">=</span> <span class="p">((</span><span class="n">blue</span> <span class="o">+</span> <span class="mf">0.055</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="mf">0.055</span><span class="p">))</span><span class="o">**</span><span class="mf">2.4</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">blue</span> <span class="o">=</span> <span class="n">blue</span> <span class="o">/</span> <span class="mf">12.92</span>
-
-    <span class="c"># pylint: disable=invalid-name</span>
-    <span class="c"># Convert to XYZ</span>
-    <span class="n">X</span> <span class="o">=</span> <span class="n">red</span> <span class="o">*</span> <span class="mf">0.649926</span> <span class="o">+</span> <span class="n">green</span> <span class="o">*</span> <span class="mf">0.103455</span> <span class="o">+</span> <span class="n">blue</span> <span class="o">*</span> <span class="mf">0.197109</span>
-    <span class="n">Y</span> <span class="o">=</span> <span class="n">red</span> <span class="o">*</span> <span class="mf">0.234327</span> <span class="o">+</span> <span class="n">green</span> <span class="o">*</span> <span class="mf">0.743075</span> <span class="o">+</span> <span class="n">blue</span> <span class="o">*</span> <span class="mf">0.022598</span>
-    <span class="n">Z</span> <span class="o">=</span> <span class="n">red</span> <span class="o">*</span> <span class="mf">0.000000</span> <span class="o">+</span> <span class="n">green</span> <span class="o">*</span> <span class="mf">0.053077</span> <span class="o">+</span> <span class="n">blue</span> <span class="o">*</span> <span class="mf">1.035763</span>
-
-    <span class="c"># Calculate xy values</span>
-    <span class="n">x</span> <span class="o">=</span> <span class="n">X</span> <span class="o">/</span> <span class="p">(</span><span class="n">X</span> <span class="o">+</span> <span class="n">Y</span> <span class="o">+</span> <span class="n">Z</span><span class="p">)</span>
-    <span class="n">y</span> <span class="o">=</span> <span class="n">Y</span> <span class="o">/</span> <span class="p">(</span><span class="n">X</span> <span class="o">+</span> <span class="n">Y</span> <span class="o">+</span> <span class="n">Z</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">hue</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">sat</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">lum</span><span class="p">)</span>
 </pre></div>
 
           </div>
